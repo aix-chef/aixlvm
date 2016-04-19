@@ -13,16 +13,28 @@ class MockSystem < AIXLVM::BaseSystem
     @cmd_add=[]
   end
 
-  def add_retrun(value) 
-    @out_retrun.push(value)
+  def add_retrun(cmd,value)
+    @out_retrun.push([cmd,value])
   end
 
-  def get_cmd() 
+  def get_cmd()
     return @cmd_add
   end
-  
+
+  def residual()
+    res=""
+    for val in @out_retrun
+      res+="%s => %s\n" % val
+    end
+    return res
+  end
+
   def run(cmd)
     @cmd_add.push(cmd)
-    return @out_retrun.shift
+    expected_cmd, retvalue = @out_retrun.shift
+    if expected_cmd!=cmd
+      raise Exception("System command error:'%s' expected, '%s' return!" % [expected_cmd,cmd])
+    end
+    return retvalue
   end
 end

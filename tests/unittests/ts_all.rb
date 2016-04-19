@@ -8,3 +8,4 @@
 require 'test/unit'
 require_relative 'tc_tools'
 require_relative 'tc_aix_tools' if (/aix/ =~ RUBY_PLATFORM) !=nil
+require_relative 'tc_objects'

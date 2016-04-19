@@ -11,4 +11,5 @@ attr_accessor :exists
 
 attribute :name, :name_attribute => true, :kind_of => String
 attribute :physical_volumes, :kind_of => Array, :required => true
-attribute :pp_size, :kind_of => Fixnum, :default => 4
+attribute :physical_partition_size, :kind_of => Fixnum, :default => 4
+attribute :max_physical_volumes, :kind_of => Fixnum, :default => 32 

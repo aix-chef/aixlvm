@@ -20,10 +20,12 @@ then
 fi
 
 echo "--------- Prepare tests cookbook ---------"
-rm -rf $current_dir/aixlvm/recipes
-cp -r $current_dir/aixlvm/tests/recipes $current_dir/aixlvm/recipes
+rm -rf $current_dir/aixtest
+mkdir -p $current_dir/aixtest
+cp -r $current_dir/aixlvm/tests/recipes $current_dir/aixtest/recipes
+echo "name             'aixtest'\ndepends   'aixlvm'\nsupports 'aix', '>= 6.1'\n" > $current_dir/aixtest/metadata.rb
 echo "cookbook_path \"$current_dir\"" > $current_dir/solo.rb
-echo "{\n\"run_list\": [ \"recipe[aixlvm]\" ]}" > $current_dir/firstrun.json
+echo "{\n\"run_list\": [ \"recipe[aixtest]\" ]\n}\n" > $current_dir/firstrun.json
 
 echo "--------- Initial LVM for test -----------"
 
@@ -34,5 +36,6 @@ chef-solo -c $current_dir/solo.rb -j $current_dir/firstrun.json
 echo "--------- Check LVM ----------------------"
 
 echo "--------- Clean --------------------------"
-rm -rf $current_dir/aixlvm/recipes
+rm -rf $current_dir/aixtest
+rm -rf $current_dir/solo.rb $current_dir/firstrun.json
 

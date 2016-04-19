@@ -4,7 +4,7 @@
 # Recipes::  default.rb
 #
 # Copyright:: 2016
-
+ 
 aixlvm_physical_volume 'hdisk1' do
     allocatable  true
     action :create
@@ -16,8 +16,8 @@ aixlvm_physical_volume 'hdisk2' do
 end
 
 aixlvm_volume_group 'datavg' do
-    physical_volumes ['hdisk1', 'hdisk2']
-    pp_size   4
+    physical_volumes          ['hdisk1', 'hdisk2']
+    physical_partition_size   10
     action :create
 end
 
