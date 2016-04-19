@@ -12,6 +12,11 @@ module AIXLVM
   end
 
   class BaseSystem
+    attr_reader :last_error
+    def initialize()
+      @last_error=''
+    end
+
     def run(cmd)
       raise "Abstract!"
     end
@@ -20,7 +25,7 @@ module AIXLVM
   class System < BaseSystem
     def run(cmd)
       begin
-        stdout, stderr, status = Open3.capture3(*cmd)
+        stdout, @last_error, status = Open3.capture3(*cmd)
         if status.success?
           return stdout.slice!(0..-(1 + $/.size))
         else
@@ -60,7 +65,7 @@ module AIXLVM
         return 0
       end
     end
-    
+
     # VG tools
     def get_pv_list_from_vg(vgname)
       pv_list=[]
@@ -68,11 +73,11 @@ module AIXLVM
       if out!=nil
         header=true
         out.split("\n").each do |line|
-           if header
-             header=(line[/PV_NAME/]!='PV_NAME')
-           else
-              pv_list.push(line[/([^\s]+)/,1])
-           end 
+          if header
+            header=(line[/PV_NAME/]!='PV_NAME')
+          else
+            pv_list.push(line[/([^\s]+)/,1])
+          end
         end
       end
       return pv_list
@@ -86,9 +91,36 @@ module AIXLVM
     def get_vg_ppsize(vgname)
       out=@system.run("lsvg %s | grep 'PP SIZE:'" % vgname)
       if out!=nil
-        return out[/PP SIZE:\s*(.*)\s/,1].to_i 
+        return out[/PP SIZE:\s*(.*)\s/,1].to_i
       else
         return nil
+      end
+    end
+
+    def create_vg(vgname,pp_size,pvname)
+      out=@system.run("mkvg -y %s -s %d -f %s" % [vgname,pp_size,pvname])
+      if out!=nil
+        return out
+      else
+        raise AIXLVM::LVMException.new("system error:%s" % @system.last_error)
+      end
+    end
+
+    def add_pv_into_vg(vgname,pvname)
+      out=@system.run("extendvg -f %s %s" % [vgname,pvname])
+      if out!=nil
+        return out
+      else
+        raise AIXLVM::LVMException.new("system error:%s" % @system.last_error)
+      end
+    end
+
+    def delete_pv_into_vg(vgname,pvname)
+      out=@system.run("reducevg -d %s %s" % [vgname,pvname])
+      if out!=nil
+        return out
+      else
+        raise AIXLVM::LVMException.new("system error:%s" % @system.last_error)
       end
     end
 

@@ -33,7 +33,10 @@ class MockSystem < AIXLVM::BaseSystem
     @cmd_add.push(cmd)
     expected_cmd, retvalue = @out_retrun.shift
     if expected_cmd!=cmd
-      raise Exception("System command error:'%s' expected, '%s' return!" % [expected_cmd,cmd])
+      raise AIXLVM::LVMException.new("System command error:'%s' expected, '%s' return!" % [expected_cmd,cmd])
+    end
+    if retvalue==nil
+      @last_error=cmd
     end
     return retvalue
   end

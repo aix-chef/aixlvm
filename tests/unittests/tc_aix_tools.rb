@@ -12,6 +12,9 @@ require_relative "../../libraries/tools"
 class TestAIXTools < Test::Unit::TestCase
   def setup
     @tools = AIXLVM::Tools.new(AIXLVM::System.new())
+    print("\n")
+    system("varyoffvg othervg 2>/dev/null")
+    system("exportvg othervg 2>/dev/null")
     system("varyoffvg datavg 2>/dev/null")
     system("exportvg datavg 2>/dev/null")
     system("mkvg -y datavg -s 4 -f hdisk1 2>/dev/null")
@@ -62,6 +65,30 @@ class TestAIXTools < Test::Unit::TestCase
     assert_equal(4096, @tools.get_size_from_pv('hdisk3'))
     assert_equal(4096, @tools.get_size_from_pv('hdisk4'))
     assert_equal(0, @tools.get_size_from_pv('hdisk5'))
+  end
+
+  def test_08_create_vg
+    @tools.create_vg('othervg',8,'hdisk3')
+    exception = assert_raise(AIXLVM::LVMException) {
+      @tools.create_vg('foovg',64,'hdisk10')
+    }
+    assert_equal('system error:0516-306 mkvg: Unable to find physical volume hdisk10 in the Device', exception.message[0,80])
+  end
+
+  def test_09_add_pv_into_vg
+    @tools.add_pv_into_vg('datavg','hdisk3')
+    exception = assert_raise(AIXLVM::LVMException) {
+      @tools.add_pv_into_vg('foovg','hdisk2')
+    }
+    assert_equal('system error:0516-306 extendvg: Unable to find volume group foovg in the Device', exception.message[0,79])
+  end
+
+  def test_10_delete_pv_into_vg
+    @tools.delete_pv_into_vg('datavg','hdisk2')
+    exception = assert_raise(AIXLVM::LVMException) {
+      @tools.delete_pv_into_vg('foovg','hdisk3')
+    }
+    assert_equal('system error:0516-306 getlvodm: Unable to find volume group foovg in the Device', exception.message[0,79])
   end
 
 end

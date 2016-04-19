@@ -17,7 +17,8 @@ end
 
 aixlvm_volume_group 'datavg' do
     physical_volumes          ['hdisk1', 'hdisk2']
-    physical_partition_size   10
+    physical_partition_size   64
+    max_physical_volumes      1024  
     action :create
 end
 

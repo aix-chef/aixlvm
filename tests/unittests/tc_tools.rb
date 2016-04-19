@@ -12,6 +12,7 @@ require_relative "mock"
 
 class TestTools < Test::Unit::TestCase
   def setup
+    print("\n")
     @mock = MockSystem.new()
     @tools = AIXLVM::Tools.new(@mock)
   end
@@ -98,6 +99,39 @@ INFINITE RETRY:     no
     @mock.add_retrun("bootinfo -s hdisk1", "4096")
     assert_equal(0, @tools.get_size_from_pv('hdisk10'))
     assert_equal(4096, @tools.get_size_from_pv('hdisk1'))
+    assert_equal('',@mock.residual())
+  end
+
+  def test_08_create_vg
+    @mock.add_retrun("mkvg -y datavg -s 10 -f hdisk1", '')
+    @mock.add_retrun("mkvg -y foovg -s 50 -f hdisk2", nil)
+    @tools.create_vg('datavg',10,'hdisk1')
+    exception = assert_raise(AIXLVM::LVMException) {
+      @tools.create_vg('foovg',50,'hdisk2')
+    }
+    assert_equal('system error:mkvg -y foovg -s 50 -f hdisk2', exception.message)
+    assert_equal('',@mock.residual())
+  end
+
+  def test_09_add_pv_into_vg
+    @mock.add_retrun("extendvg -f datavg hdisk2", '')
+    @mock.add_retrun("extendvg -f foovg hdisk2", nil)
+    @tools.add_pv_into_vg('datavg','hdisk2')
+    exception = assert_raise(AIXLVM::LVMException) {
+      @tools.add_pv_into_vg('foovg','hdisk2')
+    }
+    assert_equal('system error:extendvg -f foovg hdisk2', exception.message)
+    assert_equal('',@mock.residual())
+  end
+
+  def test_10_delete_pv_into_vg
+    @mock.add_retrun("reducevg -d datavg hdisk3", '')
+    @mock.add_retrun("reducevg -d foovg hdisk3", nil)
+    @tools.delete_pv_into_vg('datavg','hdisk3')
+    exception = assert_raise(AIXLVM::LVMException) {
+      @tools.delete_pv_into_vg('foovg','hdisk3')
+    }
+    assert_equal('system error:reducevg -d foovg hdisk3', exception.message)
     assert_equal('',@mock.residual())
   end
 
