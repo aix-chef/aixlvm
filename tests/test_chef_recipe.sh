@@ -56,7 +56,7 @@ then
 	echo "*** Bad final status ****"
 	exit 1
 fi
-if [ "$disk_datavg" != "hdisk1 hdisk2" ]
+if [ "$disk_datavg" != "hdisk1 hdisk3" ]
 then
 	echo "disk=$disk_datavg"
 	lspv

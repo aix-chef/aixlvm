@@ -18,10 +18,14 @@ def load_current_resource
 end
 
 action :create do
-  if @volgroup.check_to_change()
-    converge_by(@volgroup.create().join(" | ")) do
-      
+  begin
+    if @volgroup.check_to_change()
+      converge_by(@volgroup.create().join(" | ")) do
+
+      end
     end
+  rescue AIXLVM::LVMException => e
+    Chef::Log.fatal(e.message)
   end
 end
 
