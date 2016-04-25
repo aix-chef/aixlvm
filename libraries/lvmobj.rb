@@ -76,4 +76,21 @@ module AIXLVM
       return ret
     end
   end
+
+  class LogicalVolume
+    attr_accessor :group
+    attr_accessor :size
+    attr_accessor :copies  # [1, 2, 3]
+    attr_accessor :scheduling_policy  # ['parallel', 'sequential', 'parallel_write_sequential_read', 'parallel_write_round_robin_read']
+
+    def initialize(name,system)
+      @name=name
+      @tools=Tools.new(system)
+      @group=""
+      @size=0
+      @copies=1
+      @scheduling_policy='parallel'
+    end
+  end
+
 end

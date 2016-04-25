@@ -5,16 +5,6 @@
 #
 # Copyright:: 2016
  
-aixlvm_physical_volume 'hdisk1' do
-    allocatable  true
-    action :create
-end
-
-aixlvm_physical_volume 'hdisk2' do
-    allocatable  true
-    action :create
-end
-
 aixlvm_volume_group 'datavg' do
     physical_volumes          ['hdisk1', 'hdisk2']
     physical_partition_size   64
@@ -32,12 +22,22 @@ end
 aixlvm_logical_volume 'part1' do
     group 'datavg'
     size   512
+    scheduling_policy 'sequential'
     action :create
 end
 
 aixlvm_logical_volume 'part2' do
     group 'datavg'
     size   1024
+    copies 2
+    action :create
+end
+
+aixlvm_logical_volume 'part3' do
+    group 'foovg'
+    size   2048
+    copies 3
+    scheduling_policy 'parallel_write_round_robin_read'
     action :create
 end
 

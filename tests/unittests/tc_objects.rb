@@ -234,3 +234,13 @@ class TestVolumGroup < Test::Unit::TestCase
   end
 
 end
+
+class TestLogicalVolume < Test::Unit::TestCase
+  def setup
+    print("\n")
+    @mock = MockSystem.new()
+    @logicalvol = AIXLVM::LogicalVolume.new('part1',@mock)
+    @logicalvol.group='datavg'
+    @logicalvol.size=1024
+  end
+end
