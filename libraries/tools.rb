@@ -97,6 +97,15 @@ module AIXLVM
       end
     end
 
+    def get_vg_freepp(vgname)
+      out=@system.run("lsvg %s | grep 'FREE PPs:'" % vgname)
+      if out!=nil
+        return out[/FREE PPs:\s*(.*)\s/,1].to_i
+      else
+        return nil
+      end
+    end
+
     def create_vg(vgname,pp_size,pvname)
       out=@system.run("mkvg -y %s -s %d -f %s" % [vgname,pp_size,pvname])
       if out!=nil
@@ -123,11 +132,47 @@ module AIXLVM
         raise AIXLVM::LVMException.new("system error:%s" % @system.last_error)
       end
     end
-
+    
     # LV tools
-    def lv_exist?(lvname)
+    def get_vg_list_from_lv(lvname)
       out=@system.run('lslv '+lvname)
-      return out!=nil
+      if out!=nil
+        return out[/VOLUME GROUP:\s*(.*)\s*/,1]
+      else
+        return nil
+      end
     end
+
+    def lv_exist?(lvname)
+      return get_vg_list_from_lv(lvname)!=nil
+    end
+
+    def get_nbpp_from_lv(lvname)
+      out=@system.run("lslv %s | grep 'PPs:'" % lvname)
+      if out!=nil
+        return out[/PPs:\s*(.*)\s/,1].to_i
+      else
+        return nil
+      end
+    end
+    
+    def create_lv(lvname,vgname,nb_pp)
+      out=@system.run("mklv -y %s %s %d" % [lvname,vgname,nb_pp])
+      if out!=nil
+        return out
+      else
+        raise AIXLVM::LVMException.new("system error:%s" % @system.last_error)
+      end
+    end
+    
+    def increase_lv(lvname,diff_pp)
+      out=@system.run("extendlv %s %d" % [lvname,diff_pp])
+      if out!=nil
+        return out
+      else
+        raise AIXLVM::LVMException.new("system error:%s" % @system.last_error)
+      end
+    end
+    
   end
 end

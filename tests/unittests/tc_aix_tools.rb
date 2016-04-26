@@ -19,6 +19,7 @@ class TestAIXTools < Test::Unit::TestCase
     system("exportvg datavg 2>/dev/null")
     system("mkvg -y datavg -s 4 -f hdisk1 2>/dev/null")
     system("extendvg -f datavg hdisk2 2>/dev/null")
+    system("mklv -y part1 datavg 20 2>/dev/null")
   end
 
   def test_01_pv_exists
@@ -89,6 +90,37 @@ class TestAIXTools < Test::Unit::TestCase
       @tools.delete_pv_into_vg('foovg','hdisk3')
     }
     assert_equal('system error:0516-306 getlvodm: Unable to find volume group foovg in the Device', exception.message[0,79])
+  end
+
+  def test_11_get_vg_list_from_lv
+    assert_equal('rootvg', @tools.get_vg_list_from_lv('hd1'))
+    assert_equal(nil, @tools.get_vg_list_from_lv('hd'))
+  end
+
+  def test_12_get_nbpp_from_lv
+    assert_equal(20, @tools.get_nbpp_from_lv('part1'))
+    assert_equal(nil, @tools.get_nbpp_from_lv('part20'))
+  end
+
+  def test_13_get_vg_freepp
+    assert_equal(2026, @tools.get_vg_freepp('datavg'))
+    assert_equal(nil, @tools.get_vg_freepp('foovg'))
+  end
+
+  def test_14_create_lv
+    @tools.create_lv('part2', 'datavg',10)
+    exception = assert_raise(AIXLVM::LVMException) {
+      @tools.create_lv('part3','foovg', 20)
+    }
+    assert_equal('system error:0516-306 getlvodm: Unable to find volume group foovg in the Device', exception.message[0,79])
+  end
+
+  def test_15_increase_lv
+    @tools.increase_lv('part1', 10)
+    exception = assert_raise(AIXLVM::LVMException) {
+      @tools.increase_lv('part3', 20)
+    }
+    assert_equal('system error:0516-306 getlvodm: Unable to find  part3 in the Device', exception.message[0,67])
   end
 
 end

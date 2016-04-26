@@ -135,4 +135,62 @@ INFINITE RETRY:     no
     assert_equal('',@mock.residual())
   end
 
+  def test_11_get_vg_list_from_lv
+    @mock.add_retrun('lslv hd1', 'LOGICAL VOLUME:     hd1                    VOLUME GROUP:   rootvg
+LV IDENTIFIER:      00f9fd4b00004c0000000153e61e5d00.8 PERMISSION:     read/write
+VG STATE:           active/complete        LV STATE:       opened/syncd
+TYPE:               jfs2                   WRITE VERIFY:   off
+MAX LPs:            512                    PP SIZE:        32 megabyte(s)
+COPIES:             1                      SCHED POLICY:   parallel
+LPs:                1                      PPs:            1
+STALE PPs:          0                      BB POLICY:      relocatable
+INTER-POLICY:       minimum                RELOCATABLE:    yes
+INTRA-POLICY:       center                 UPPER BOUND:    32
+MOUNT POINT:        /home                  LABEL:          /home
+MIRROR WRITE CONSISTENCY: on/ACTIVE
+EACH LP COPY ON A SEPARATE PV ?: yes
+Serialize IO ?:     NO
+INFINITE RETRY:     no
+')
+    @mock.add_retrun('lslv hd', nil)
+    assert_equal('rootvg', @tools.get_vg_list_from_lv('hd1'))
+    assert_equal(nil, @tools.get_vg_list_from_lv('hd'))
+  end
+
+  def test_12_get_nbpp_from_lv
+    @mock.add_retrun("lslv hd1 | grep 'PPs:'", "LPs:                10                     PPs:            12 ")
+    @mock.add_retrun("lslv hd3 | grep 'PPs:'", nil)
+    assert_equal(12, @tools.get_nbpp_from_lv('hd1'))
+    assert_equal(nil, @tools.get_nbpp_from_lv('hd3'))
+  end
+
+  def test_13_get_vg_freepp
+    @mock.add_retrun("lsvg datavg | grep 'FREE PPs:'", "MAX LVs:            256                      FREE PPs:       116 (7424 megabytes) ")
+    @mock.add_retrun("lsvg foovg | grep 'FREE PPs:'", nil)
+    assert_equal(116, @tools.get_vg_freepp('datavg'))
+    assert_equal(nil, @tools.get_vg_freepp('foovg'))
+  end
+
+  def test_14_create_lv
+    @mock.add_retrun("mklv -y part1 datavg 10", '')
+    @mock.add_retrun("mklv -y part2 foovg 20", nil)
+    @tools.create_lv('part1', 'datavg',10)
+    exception = assert_raise(AIXLVM::LVMException) {
+      @tools.create_lv('part2','foovg', 20)
+    }
+    assert_equal('system error:mklv -y part2 foovg 20', exception.message)
+    assert_equal('',@mock.residual())
+  end
+
+  def test_15_increase_lv
+    @mock.add_retrun("extendlv part1 10", '')
+    @mock.add_retrun("extendlv part2 20", nil)
+    @tools.increase_lv('part1', 10)
+    exception = assert_raise(AIXLVM::LVMException) {
+      @tools.increase_lv('part2', 20)
+    }
+    assert_equal('system error:extendlv part2 20', exception.message)
+    assert_equal('',@mock.residual())
+  end
+  
 end

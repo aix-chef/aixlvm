@@ -11,9 +11,21 @@ def whyrun_supported?
 end
 
 def load_current_resource
-  return
+  @logicalvol = AIXLVM::LogicalVolume.new(@new_resource.name,AIXLVM::System.new())
+  @logicalvol.group=@new_resource.group
+  @logicalvol.size=@new_resource.size
+  @copies=@new_resource.copies
+  @scheduling_policy=@new_resource.scheduling_policy
 end
 
 action :create do
-  Chef::Log.fatal('logical volume :create => no implemented!')
+  begin
+    if @logicalvol.check_to_change()
+      converge_by(@logicalvol.create().join(" | ")) do
+
+      end
+    end
+  rescue AIXLVM::LVMException => e
+    Chef::Log.fatal(e.message)
+  end
 end
