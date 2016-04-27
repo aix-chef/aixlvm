@@ -47,24 +47,45 @@ then
 fi
 
 echo "--------- Check LVM ----------------------"
+result=0
 pp_size=$(lsvg datavg 2>/dev/null | grep 'PP SIZE' | sed 's|.* \([0-9]*\) mega.*|\1|g')
 disk_datavg=$(echo $(lspv | grep 'datavg' | sed 's|\(hdisk[0-9]*\).*|\1|g'))
+lv_datavg=$(echo $(lspv | grep 'datavg' | sed 's|\(hdisk[0-9]*\).*|\1|g'))
+sizes_part1=$(lsvg -l datavg | grep 'part1' | sed 's|.*jfs[ \t]*\([0-9]*\)[ \t]*\([0-9]*\)[ \t]*\([0-9]*\).*|\1 \2 \3|g')
+sizes_part2=$(lsvg -l datavg | grep 'part2' | sed 's|.*jfs[ \t]*\([0-9]*\)[ \t]*\([0-9]*\)[ \t]*\([0-9]*\).*|\1 \2 \3|g')
 if [ $pp_size -ne 64 ]
 then
 	echo "pp_size=$pp_size" 
-	lspv
-	echo "*** Bad final status ****"
-	exit 1
+	echo "*** Bad PP size for datavg ****"
+	result=1
 fi
-if [ "$disk_datavg" != "hdisk1 hdisk3" ]
+if [ "$disk_datavg" != "hdisk1 hdisk2 hdisk3" ]
 then
 	echo "disk=$disk_datavg"
-	lspv
-	echo "*** Bad final status ****"
-	exit 1
+	echo "*** Bad PV include in datavg ****"
+	result=1
+fi
+if [ "$sizes_part1" != "32 32 1" ]
+then
+	echo "sizes part1=$sizes_part1"
+	echo "*** Bad sizes (LPs,PPs,PVs) for LV part1 ****"
+	result=1
+fi
+if [ "$sizes_part2" != "16 16 1" ]
+then
+	echo "sizes part2=$sizes_part2"
+	echo "*** Bad sizes (LPs,PPs,PVs) for LV part2 ****"
+	result=1
 fi
 
-echo "====== SUCCESS ====== "
+if [ $result -eq 0 ] 
+then
+	echo "====== SUCCESS ====== "
+else
+	lsvg datavg
+	lsvg -p datavg
+	lsvg -l datavg
+fi
 
 echo "--------- Clean --------------------------"
 rm -rf $current_dir/aixtest

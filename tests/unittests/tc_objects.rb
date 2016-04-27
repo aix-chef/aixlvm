@@ -18,7 +18,7 @@ class TestVolumGroup < Test::Unit::TestCase
     @volgroup = AIXLVM::VolumeGroup.new('datavg',@mock)
     @volgroup.physical_volumes=['hdisk1', 'hdisk2']
     @volgroup.physical_partition_size=128
-    @volgroup.max_physical_volumes=64
+    @volgroup.max_physical_volumes=32
   end
 
   def test_01_pv_dont_exists
@@ -104,13 +104,13 @@ class TestVolumGroup < Test::Unit::TestCase
     }
     assert_equal('The physical partition size must be a power of 2 between 1 and 1024!', exception.message)
 
-    @volgroup.physical_partition_size=8
+    @volgroup.physical_partition_size=2
     @mock.add_retrun('lspv | grep "hdisk1 "', 'hdisk1  00f9fd4bf0d1ce48  None')
     @mock.add_retrun("lspv hdisk1 | grep 'VOLUME GROUP:'", 'PHYSICAL VOLUME:    hdisk1                   VOLUME GROUP:     datavg')
     @mock.add_retrun("bootinfo -s hdisk1", "512")
     @mock.add_retrun('lspv | grep "hdisk2 "', 'hdisk2  00f9fd4bf0d4e037  None')
     @mock.add_retrun("lspv hdisk2 | grep 'VOLUME GROUP:'", nil)
-    @mock.add_retrun("bootinfo -s hdisk2", "2048")
+    @mock.add_retrun("bootinfo -s hdisk2", "131072")
 
     exception = assert_raise(AIXLVM::LVMException) {
       @volgroup.check_to_change()

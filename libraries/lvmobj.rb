@@ -39,7 +39,7 @@ module AIXLVM
           raise AIXLVM::LVMException.new('physical volume "%s" is use in a different volume group!' % current_pv)
         end
         pv_size=@tools.get_size_from_pv(current_pv)
-        if (pv_size/@physical_partition_size) > @max_physical_volumes
+        if (pv_size/@physical_partition_size) > (@max_physical_volumes*1024)
           raise AIXLVM::LVMException.new('The physical partition size breaks the limit on the number of physical partitions per physical volume!')
         end
       end

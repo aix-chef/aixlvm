@@ -63,8 +63,15 @@ aixlvm_filesystem 'dir3' do
 end
 
 aixlvm_volume_group 'datavg' do
-    physical_volumes          ['hdisk1', 'hdisk3']
+    physical_volumes          ['hdisk1', 'hdisk2', 'hdisk3']
     physical_partition_size   64
     max_physical_volumes      1024  
+    action :create
+end
+
+aixlvm_logical_volume 'part1' do
+    group 'datavg'
+    size   2048
+    scheduling_policy 'sequential'
     action :create
 end
