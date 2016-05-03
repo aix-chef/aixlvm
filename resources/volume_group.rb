@@ -11,5 +11,5 @@ attr_accessor :exists
 
 attribute :name, :name_attribute => true, :kind_of => String
 attribute :physical_volumes, :kind_of => Array, :required => true
-attribute :physical_partition_size, :kind_of => Fixnum, :default => 4
-attribute :max_physical_volumes, :kind_of => Fixnum, :default => 32 
+attribute :use_as_hot_spare, :kind_of => String, :default => 'n', :equal_to => ['y','n']
+attribute :mirror_pool_name , :kind_of => String, :default => nil

@@ -88,10 +88,19 @@ module AIXLVM
       return ((out!=nil) and (vgname==out.strip))
     end
 
+    def vg_hot_spare?(vgname)
+      out=@system.run("lsvg %s | grep 'HOT SPARE:'" % vgname)
+      if out!=nil
+        return out[/HOT SPARE:\s*([^\s]*)\s.*/,1] !='no'
+      else
+        return nil
+      end
+    end
+
     def get_vg_ppsize(vgname)
       out=@system.run("lsvg %s | grep 'PP SIZE:'" % vgname)
       if out!=nil
-        return out[/PP SIZE:\s*(.*)\s/,1].to_i
+        return out[/PP SIZE:\s*(.*)\s*/,1].to_i
       else
         return nil
       end
@@ -100,14 +109,48 @@ module AIXLVM
     def get_vg_freepp(vgname)
       out=@system.run("lsvg %s | grep 'FREE PPs:'" % vgname)
       if out!=nil
-        return out[/FREE PPs:\s*(.*)\s/,1].to_i
+        return out[/FREE PPs:\s*(.*)\s*/,1].to_i
       else
         return nil
       end
     end
 
-    def create_vg(vgname,pp_size,pvname)
-      out=@system.run("mkvg -y %s -s %d -f %s" % [vgname,pp_size,pvname])
+    def get_vg_totalpp(vgname)
+      out=@system.run("lsvg %s | grep 'TOTAL PPs:'" % vgname)
+      if out!=nil
+        return out[/TOTAL PPs:\s*(.*)\s*/,1].to_i
+      else
+        return nil
+      end
+    end
+
+    def get_mirrorpool_from_vg(vgname)
+      out=@system.run("lspv -P | grep '%s'" % vgname)
+      if out!=nil
+        mirror_pool=nil
+        for line in out.split("\n")
+          current_pool=line[/.*#{vgname}\s+(.*)/,1]
+          if mirror_pool==nil
+            mirror_pool=current_pool
+          else
+            if mirror_pool!=current_pool
+              mirror_pool="???"
+            end
+          end
+        end
+        return mirror_pool
+      else
+        return nil
+      end
+    end
+
+    def create_vg(vgname,pvname,mirrorpool)
+      if mirrorpool==nil
+        cmd="mkvg -y %s -S -f %s" % [vgname,pvname]
+      else
+        cmd="mkvg -y %s -S -p %s -f %s" % [vgname,mirrorpool,pvname]
+      end
+      out=@system.run(cmd)
       if out!=nil
         return out
       else
@@ -115,8 +158,22 @@ module AIXLVM
       end
     end
 
-    def add_pv_into_vg(vgname,pvname)
-      out=@system.run("extendvg -f %s %s" % [vgname,pvname])
+    def modify_vg(vgname,hot_spot)
+      out=@system.run("chvg -h %s %s" % [hot_spot,vgname])
+      if out!=nil
+        return out
+      else
+        raise AIXLVM::LVMException.new("system error:%s" % @system.last_error)
+      end
+    end
+
+    def add_pv_into_vg(vgname,pvname,mirrorpool)
+      if mirrorpool==nil
+        cmd="extendvg -f %s %s" % [vgname,pvname]
+      else
+        cmd="extendvg -p %s -f %s %s" % [mirrorpool,vgname,pvname]
+      end
+      out=@system.run(cmd)
       if out!=nil
         return out
       else
@@ -132,7 +189,7 @@ module AIXLVM
         raise AIXLVM::LVMException.new("system error:%s" % @system.last_error)
       end
     end
-    
+
     # LV tools
     def get_vg_list_from_lv(lvname)
       out=@system.run('lslv '+lvname)
@@ -150,12 +207,12 @@ module AIXLVM
     def get_nbpp_from_lv(lvname)
       out=@system.run("lslv %s | grep 'PPs:'" % lvname)
       if out!=nil
-        return out[/PPs:\s*(.*)\s/,1].to_i
+        return out[/PPs:\s*(.*)\s*/,1].to_i
       else
         return nil
       end
     end
-    
+
     def create_lv(lvname,vgname,nb_pp)
       out=@system.run("mklv -y %s %s %d" % [lvname,vgname,nb_pp])
       if out!=nil
@@ -164,7 +221,7 @@ module AIXLVM
         raise AIXLVM::LVMException.new("system error:%s" % @system.last_error)
       end
     end
-    
+
     def increase_lv(lvname,diff_pp)
       out=@system.run("extendlv %s %d" % [lvname,diff_pp])
       if out!=nil
@@ -173,6 +230,6 @@ module AIXLVM
         raise AIXLVM::LVMException.new("system error:%s" % @system.last_error)
       end
     end
-    
+
   end
 end

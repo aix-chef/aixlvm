@@ -7,15 +7,13 @@
  
 aixlvm_volume_group 'datavg' do
     physical_volumes          ['hdisk1', 'hdisk2']
-    physical_partition_size   64
-    max_physical_volumes      1024  
+    use_as_hot_spare          'n'
+    mirror_pool_name          "mymirror"
     action :create
 end
 
 aixlvm_volume_group 'foovg' do
     physical_volumes          ['hdisk10']
-    physical_partition_size   64
-    max_physical_volumes      1024  
     action :create
 end
 
@@ -64,8 +62,8 @@ end
 
 aixlvm_volume_group 'datavg' do
     physical_volumes          ['hdisk1', 'hdisk2', 'hdisk3']
-    physical_partition_size   64
-    max_physical_volumes      1024  
+    use_as_hot_spare          'y'
+    mirror_pool_name          "othermirror"
     action :create
 end
 

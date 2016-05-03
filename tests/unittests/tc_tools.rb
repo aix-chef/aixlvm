@@ -10,7 +10,7 @@ require "test/unit"
 require_relative "../../libraries/tools"
 require_relative "mock"
 
-class TestTools < Test::Unit::TestCase
+class TestTools_VG < Test::Unit::TestCase
   def setup
     print("\n")
     @mock = MockSystem.new()
@@ -94,37 +94,83 @@ INFINITE RETRY:     no
     assert_equal('',@mock.residual())
   end
 
-  def test_07_get_size_from_pv
-    @mock.add_retrun("bootinfo -s hdisk10", nil)
-    @mock.add_retrun("bootinfo -s hdisk1", "4096")
-    assert_equal(0, @tools.get_size_from_pv('hdisk10'))
-    assert_equal(4096, @tools.get_size_from_pv('hdisk1'))
+  def test_07_vg_hot_spare
+    @mock.add_retrun("lsvg datavg | grep 'HOT SPARE:'", 'HOT SPARE:          yes (one to one)         BB POLICY:      relocatable')
+    @mock.add_retrun("lsvg datavg | grep 'HOT SPARE:'", 'HOT SPARE:          no                       BB POLICY:      relocatable')
+    @mock.add_retrun("lsvg datavg | grep 'HOT SPARE:'", nil)
+    assert_equal(true, @tools.vg_hot_spare?('datavg'))
+    assert_equal(false, @tools.vg_hot_spare?('datavg'))
+    assert_equal(nil, @tools.vg_hot_spare?('datavg'))
     assert_equal('',@mock.residual())
   end
 
-  def test_08_create_vg
-    @mock.add_retrun("mkvg -y datavg -s 10 -f hdisk1", '')
-    @mock.add_retrun("mkvg -y foovg -s 50 -f hdisk2", nil)
-    @tools.create_vg('datavg',10,'hdisk1')
+  def test_08_get_vg_totalpp
+    @mock.add_retrun("lsvg datavg | grep 'TOTAL PPs:'", nil)
+    @mock.add_retrun("lsvg datavg | grep 'TOTAL PPs:'", 'VG PERMISSION:      read/write               TOTAL PPs:      511 (16352 megabytes)')
+    @mock.add_retrun("lsvg datavg | grep 'TOTAL PPs:'", 'VG PERMISSION:      read/write               TOTAL PPs:      3018 (12072 megabytes)')
+    assert_equal(nil, @tools.get_vg_totalpp('datavg'))
+    assert_equal(511, @tools.get_vg_totalpp('datavg'))
+    assert_equal(3018, @tools.get_vg_totalpp('datavg'))
+    assert_equal('',@mock.residual())
+  end
+
+  def test_09_get_mirrorpool_from_vg
+    @mock.add_retrun("lspv -P | grep 'datavg'", nil)
+    @mock.add_retrun("lspv -P | grep 'datavg'", 'hdisk1            datavg            
+hdisk2            datavg            
+hdisk3            datavg  
+')
+    @mock.add_retrun("lspv -P | grep 'datavg'", 'hdisk1            datavg             mymirror
+hdisk2            datavg            mymirror
+hdisk3            datavg            mymirror')
+    @mock.add_retrun("lspv -P | grep 'datavg'", 'hdisk1            datavg           foomirror            
+    hdisk2            datavg            mymirror
+    hdisk3            datavg            mymirror')
+    assert_equal(nil, @tools.get_mirrorpool_from_vg('datavg'))
+    assert_equal('', @tools.get_mirrorpool_from_vg('datavg'))
+    assert_equal('mymirror', @tools.get_mirrorpool_from_vg('datavg'))
+    assert_equal('???', @tools.get_mirrorpool_from_vg('datavg'))
+    assert_equal('',@mock.residual())
+  end
+
+  def test_10_create_vg
+    @mock.add_retrun("mkvg -y datavg -S -f hdisk1", '')
+    @mock.add_retrun("mkvg -y datavg -S -p mirrorpool -f hdisk1", '')
+    @mock.add_retrun("mkvg -y foovg -S -f hdisk2", nil)
+    @tools.create_vg('datavg','hdisk1', nil)
+    @tools.create_vg('datavg','hdisk1', 'mirrorpool')
     exception = assert_raise(AIXLVM::LVMException) {
-      @tools.create_vg('foovg',50,'hdisk2')
+      @tools.create_vg('foovg','hdisk2', nil)
     }
-    assert_equal('system error:mkvg -y foovg -s 50 -f hdisk2', exception.message)
+    assert_equal('system error:mkvg -y foovg -S -f hdisk2', exception.message)
     assert_equal('',@mock.residual())
   end
 
-  def test_09_add_pv_into_vg
-    @mock.add_retrun("extendvg -f datavg hdisk2", '')
-    @mock.add_retrun("extendvg -f foovg hdisk2", nil)
-    @tools.add_pv_into_vg('datavg','hdisk2')
+  def test_11_modify_vg
+    @mock.add_retrun("chvg -h y datavg", '')
+    @mock.add_retrun("chvg -h n foovg", nil)
+    @tools.modify_vg('datavg','y')
     exception = assert_raise(AIXLVM::LVMException) {
-      @tools.add_pv_into_vg('foovg','hdisk2')
+      @tools.modify_vg('foovg','n')
+    }
+    assert_equal('system error:chvg -h n foovg', exception.message)
+    assert_equal('',@mock.residual())
+  end
+
+  def test_12_add_pv_into_vg
+    @mock.add_retrun("extendvg -f datavg hdisk2", '')
+    @mock.add_retrun("extendvg -p mypool -f datavg hdisk2", '')
+    @mock.add_retrun("extendvg -f foovg hdisk2", nil)
+    @tools.add_pv_into_vg('datavg','hdisk2',nil)
+    @tools.add_pv_into_vg('datavg','hdisk2','mypool')
+    exception = assert_raise(AIXLVM::LVMException) {
+      @tools.add_pv_into_vg('foovg','hdisk2',nil)
     }
     assert_equal('system error:extendvg -f foovg hdisk2', exception.message)
     assert_equal('',@mock.residual())
   end
 
-  def test_10_delete_pv_into_vg
+  def test_13_delete_pv_into_vg
     @mock.add_retrun("reducevg -d datavg hdisk3", '')
     @mock.add_retrun("reducevg -d foovg hdisk3", nil)
     @tools.delete_pv_into_vg('datavg','hdisk3')
@@ -135,7 +181,16 @@ INFINITE RETRY:     no
     assert_equal('',@mock.residual())
   end
 
-  def test_11_get_vg_list_from_lv
+end
+
+class TestTools_LV < Test::Unit::TestCase
+  def setup
+    print("\n")
+    @mock = MockSystem.new()
+    @tools = AIXLVM::Tools.new(@mock)
+  end
+
+  def test_01_get_vg_list_from_lv
     @mock.add_retrun('lslv hd1', 'LOGICAL VOLUME:     hd1                    VOLUME GROUP:   rootvg
 LV IDENTIFIER:      00f9fd4b00004c0000000153e61e5d00.8 PERMISSION:     read/write
 VG STATE:           active/complete        LV STATE:       opened/syncd
@@ -157,21 +212,21 @@ INFINITE RETRY:     no
     assert_equal(nil, @tools.get_vg_list_from_lv('hd'))
   end
 
-  def test_12_get_nbpp_from_lv
+  def test_02_get_nbpp_from_lv
     @mock.add_retrun("lslv hd1 | grep 'PPs:'", "LPs:                10                     PPs:            12 ")
     @mock.add_retrun("lslv hd3 | grep 'PPs:'", nil)
     assert_equal(12, @tools.get_nbpp_from_lv('hd1'))
     assert_equal(nil, @tools.get_nbpp_from_lv('hd3'))
   end
 
-  def test_13_get_vg_freepp
+  def test_03_get_vg_freepp
     @mock.add_retrun("lsvg datavg | grep 'FREE PPs:'", "MAX LVs:            256                      FREE PPs:       116 (7424 megabytes) ")
     @mock.add_retrun("lsvg foovg | grep 'FREE PPs:'", nil)
     assert_equal(116, @tools.get_vg_freepp('datavg'))
     assert_equal(nil, @tools.get_vg_freepp('foovg'))
   end
 
-  def test_14_create_lv
+  def test_04_create_lv
     @mock.add_retrun("mklv -y part1 datavg 10", '')
     @mock.add_retrun("mklv -y part2 foovg 20", nil)
     @tools.create_lv('part1', 'datavg',10)
@@ -182,7 +237,7 @@ INFINITE RETRY:     no
     assert_equal('',@mock.residual())
   end
 
-  def test_15_increase_lv
+  def test_05_increase_lv
     @mock.add_retrun("extendlv part1 10", '')
     @mock.add_retrun("extendlv part2 20", nil)
     @tools.increase_lv('part1', 10)
@@ -192,5 +247,5 @@ INFINITE RETRY:     no
     assert_equal('system error:extendlv part2 20', exception.message)
     assert_equal('',@mock.residual())
   end
-  
+
 end

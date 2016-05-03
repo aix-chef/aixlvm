@@ -1,6 +1,7 @@
 #!/bin/sh
 
 export PATH=$PATH:/opt/chef/bin
+run_option="$1"
 
 current_dir=$PWD
 if [ ! -d "$current_dir/aixlvm/tests/recipes" ]
@@ -11,12 +12,15 @@ fi
 
 cd $current_dir
 
-echo "--------- Run unittest for LVM -----------"
-/opt/chef/embedded/bin/ruby $current_dir/aixlvm/tests/unittests/ts_all.rb
-if [ $? -ne 0 ]
+if [ "$run_option" != "NO-UNIT" ]
 then
-	echo "*** Unittest failure ****"
-	exit 1
+	echo "--------- Run unittest for LVM -----------"
+	/opt/chef/embedded/bin/ruby $current_dir/aixlvm/tests/unittests/ts_all.rb
+	if [ $? -ne 0 ]
+	then
+		echo "*** Unittest failure ****"
+		exit 1
+	fi
 fi
 
 echo "--------- Prepare tests cookbook ---------"
@@ -48,33 +52,38 @@ fi
 
 echo "--------- Check LVM ----------------------"
 result=0
-pp_size=$(lsvg datavg 2>/dev/null | grep 'PP SIZE' | sed 's|.* \([0-9]*\) mega.*|\1|g')
 disk_datavg=$(echo $(lspv | grep 'datavg' | sed 's|\(hdisk[0-9]*\).*|\1|g'))
+hot_spare_datavg=$(echo "$(lsvg datavg | grep 'HOT SPARE:' | sed 's|HOT SPARE:[ \t]*\(.*\)[ \t]BB.*|\1|g')" | tr -d '[[:space:]]')
 lv_datavg=$(echo $(lspv | grep 'datavg' | sed 's|\(hdisk[0-9]*\).*|\1|g'))
 sizes_part1=$(lsvg -l datavg | grep 'part1' | sed 's|.*jfs[ \t]*\([0-9]*\)[ \t]*\([0-9]*\)[ \t]*\([0-9]*\).*|\1 \2 \3|g')
 sizes_part2=$(lsvg -l datavg | grep 'part2' | sed 's|.*jfs[ \t]*\([0-9]*\)[ \t]*\([0-9]*\)[ \t]*\([0-9]*\).*|\1 \2 \3|g')
-if [ $pp_size -ne 64 ]
-then
-	echo "pp_size=$pp_size" 
-	echo "*** Bad PP size for datavg ****"
-	result=1
-fi
+pv_mirrorpools=$(lspv -P | grep datavg | sed 's|datavg|=|g' | sed 's|hdisk|+hdisk|g'  | tr -d '[[:space:]]')
 if [ "$disk_datavg" != "hdisk1 hdisk2 hdisk3" ]
 then
 	echo "disk=$disk_datavg"
 	echo "*** Bad PV include in datavg ****"
 	result=1
 fi
-if [ "$sizes_part1" != "32 32 1" ]
+if [ "$sizes_part1" != "512 512 1" ]
 then
 	echo "sizes part1=$sizes_part1"
 	echo "*** Bad sizes (LPs,PPs,PVs) for LV part1 ****"
 	result=1
 fi
-if [ "$sizes_part2" != "16 16 1" ]
+if [ "$sizes_part2" != "256 256 1" ]
 then
 	echo "sizes part2=$sizes_part2"
 	echo "*** Bad sizes (LPs,PPs,PVs) for LV part2 ****"
+	result=1
+fi
+if [ "$hot_spare_datavg" != "yes(onetoone)" ]
+then
+	echo "hot spare of datavg='$hot_spare_datavg'"
+	result=1
+fi
+if [ "$pv_mirrorpools" != "+hdisk1=mymirror+hdisk2=mymirror+hdisk3=othermirror" ]
+then
+	echo "mirror pools='$pv_mirrorpools'"
 	result=1
 fi
 

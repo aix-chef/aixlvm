@@ -9,7 +9,7 @@ require "test/unit"
 
 require_relative "../../libraries/tools"
 
-class TestAIXTools < Test::Unit::TestCase
+class TestAIXTools_VG < Test::Unit::TestCase
   def setup
     @tools = AIXLVM::Tools.new(AIXLVM::System.new())
     print("\n")
@@ -17,9 +17,8 @@ class TestAIXTools < Test::Unit::TestCase
     system("exportvg othervg 2>/dev/null")
     system("varyoffvg datavg 2>/dev/null")
     system("exportvg datavg 2>/dev/null")
-    system("mkvg -y datavg -s 4 -f hdisk1 2>/dev/null")
+    system("mkvg -y datavg -S -f hdisk1 2>/dev/null")
     system("extendvg -f datavg hdisk2 2>/dev/null")
-    system("mklv -y part1 datavg 20 2>/dev/null")
   end
 
   def test_01_pv_exists
@@ -68,46 +67,77 @@ class TestAIXTools < Test::Unit::TestCase
     assert_equal(0, @tools.get_size_from_pv('hdisk5'))
   end
 
-  def test_08_create_vg
-    @tools.create_vg('othervg',8,'hdisk3')
+  def test_08_get_vg_totalpp
+    assert_equal(nil, @tools.get_vg_totalpp('foovg'))
+    assert_equal(2012, @tools.get_vg_totalpp('datavg'))
+  end
+
+  def test_09_get_mirrorpool_from_vg
+    assert_equal(nil, @tools.get_mirrorpool_from_vg('foovg'))
+    assert_equal('', @tools.get_mirrorpool_from_vg('datavg'))
+    assert_equal('', @tools.get_mirrorpool_from_vg('rootvg'))
+  end
+
+  def test_10_create_vg
+    @tools.create_vg('othervg','hdisk4','mymirror')
     exception = assert_raise(AIXLVM::LVMException) {
-      @tools.create_vg('foovg',64,'hdisk10')
+      @tools.create_vg('foovg','hdisk10', nil)
     }
     assert_equal('system error:0516-306 mkvg: Unable to find physical volume hdisk10 in the Device', exception.message[0,80])
   end
 
-  def test_09_add_pv_into_vg
-    @tools.add_pv_into_vg('datavg','hdisk3')
+  def test_11_modify_vg
+    @tools.modify_vg('datavg','y')
     exception = assert_raise(AIXLVM::LVMException) {
-      @tools.add_pv_into_vg('foovg','hdisk2')
+      @tools.modify_vg('foovg','n')
+    }
+    assert_equal('system error:0516-306 getlvodm: Unable to find volume group foovg in the Device', exception.message[0,79])
+  end
+
+  def test_12_add_pv_into_vg
+    @tools.add_pv_into_vg('datavg','hdisk3', 'mymirror')
+    exception = assert_raise(AIXLVM::LVMException) {
+      @tools.add_pv_into_vg('foovg','hdisk2', nil)
     }
     assert_equal('system error:0516-306 extendvg: Unable to find volume group foovg in the Device', exception.message[0,79])
   end
 
-  def test_10_delete_pv_into_vg
+  def test_13_delete_pv_into_vg
     @tools.delete_pv_into_vg('datavg','hdisk2')
     exception = assert_raise(AIXLVM::LVMException) {
       @tools.delete_pv_into_vg('foovg','hdisk3')
     }
     assert_equal('system error:0516-306 getlvodm: Unable to find volume group foovg in the Device', exception.message[0,79])
   end
+end
 
-  def test_11_get_vg_list_from_lv
+class TestAIXTools_LV < Test::Unit::TestCase
+  def setup
+    @tools = AIXLVM::Tools.new(AIXLVM::System.new())
+    print("\n")
+    system("varyoffvg datavg 2>/dev/null")
+    system("exportvg datavg 2>/dev/null")
+    system("mkvg -y datavg -s 4 -f hdisk1 2>/dev/null")
+    system("extendvg -f datavg hdisk2 2>/dev/null")
+    system("mklv -y part1 datavg 20 2>/dev/null")
+  end
+
+  def test_01_get_vg_list_from_lv
     assert_equal('rootvg', @tools.get_vg_list_from_lv('hd1'))
     assert_equal(nil, @tools.get_vg_list_from_lv('hd'))
   end
 
-  def test_12_get_nbpp_from_lv
+  def test_02_get_nbpp_from_lv
     assert_equal(20, @tools.get_nbpp_from_lv('part1'))
     assert_equal(nil, @tools.get_nbpp_from_lv('part20'))
   end
 
-  def test_13_get_vg_freepp
+  def test_03_get_vg_freepp
     assert_equal(2026, @tools.get_vg_freepp('datavg'))
     assert_equal(nil, @tools.get_vg_freepp('foovg'))
   end
 
-  def test_14_create_lv
+  def test_04_create_lv
     @tools.create_lv('part2', 'datavg',10)
     exception = assert_raise(AIXLVM::LVMException) {
       @tools.create_lv('part3','foovg', 20)
@@ -115,12 +145,13 @@ class TestAIXTools < Test::Unit::TestCase
     assert_equal('system error:0516-306 getlvodm: Unable to find volume group foovg in the Device', exception.message[0,79])
   end
 
-  def test_15_increase_lv
+  def test_05_increase_lv
     @tools.increase_lv('part1', 10)
     exception = assert_raise(AIXLVM::LVMException) {
       @tools.increase_lv('part3', 20)
     }
     assert_equal('system error:0516-306 getlvodm: Unable to find  part3 in the Device', exception.message[0,67])
+    assert_equal(30, @tools.get_nbpp_from_lv('part1'))
   end
 
 end

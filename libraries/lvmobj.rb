@@ -8,14 +8,14 @@
 module AIXLVM
   class VolumeGroup
     attr_accessor :physical_volumes
-    attr_accessor :physical_partition_size
-    attr_accessor :max_physical_volumes
+    attr_accessor :use_as_hot_spare
+    attr_accessor :mirror_pool_name
     def initialize(name,system)
       @name=name
       @tools=Tools.new(system)
       @physical_volumes=[]
-      @physical_partition_size=2
-      @max_physical_volumes=32
+      @use_as_hot_spare='n'
+      @mirror_pool_name=nil
 
       @current_physical_volumes=[]
       @changed=false
@@ -23,12 +23,8 @@ module AIXLVM
 
     def check_to_change()
       @changed=true
-      if not [32, 64, 128, 256, 512, 768, 1024, 2048].include? @max_physical_volumes
-        raise AIXLVM::LVMException.new('Illegal number of maximum physical volumes!')
-      end
-      val=Math.log(@physical_partition_size) / Math.log(2)
-      if val!=val.to_i
-        raise AIXLVM::LVMException.new('The physical partition size must be a power of 2 between 1 and 1024!')
+      if (@mirror_pool_name != nil) && !(@mirror_pool_name =~ /^[0-9a-zA-Z]{1,15}$/)
+        raise AIXLVM::LVMException.new('illegal_mirror_pool_name!')
       end
       for current_pv in @physical_volumes
         if not @tools.pv_exist?(current_pv)
@@ -38,18 +34,16 @@ module AIXLVM
         if current_vg!=nil and current_vg!=@name
           raise AIXLVM::LVMException.new('physical volume "%s" is use in a different volume group!' % current_pv)
         end
-        pv_size=@tools.get_size_from_pv(current_pv)
-        if (pv_size/@physical_partition_size) > (@max_physical_volumes*1024)
-          raise AIXLVM::LVMException.new('The physical partition size breaks the limit on the number of physical partitions per physical volume!')
-        end
       end
       @current_physical_volumes=[]
       if @tools.vg_exist?(@name)
-        if @tools.get_vg_ppsize(@name)!=@physical_partition_size
-          raise AIXLVM::LVMException.new('The volume group already exists with a different physical partition size!')
-        end
         @current_physical_volumes=@tools.get_pv_list_from_vg(@name)
-        @changed=@physical_volumes.sort!=@current_physical_volumes.sort
+        current_hot_spare=@tools.vg_hot_spare?(@name)
+        if (current_hot_spare==(@use_as_hot_spare=='y'))
+          @use_as_hot_spare=nil
+        end
+        @tools.get_mirrorpool_from_vg('datavg')
+        @changed=(@physical_volumes.sort!=@current_physical_volumes.sort) || (@use_as_hot_spare!=nil)
       end
       return @changed
     end
@@ -58,15 +52,23 @@ module AIXLVM
       ret = []
       if @changed
         if @current_physical_volumes.empty?
-          @tools.create_vg(@name,@physical_partition_size,@physical_volumes[0])
+          @tools.create_vg(@name,@physical_volumes[0],@mirror_pool_name)
           ret.push("Create volume groupe '%s'" % @name)
+          if @use_as_hot_spare=='y'
+            @tools.modify_vg('datavg','y')
+          end
           ret.push("Extending '%s' to '%s'" % [@physical_volumes[0],@name])
           @current_physical_volumes.push(@physical_volumes[0])
+        else
+          if (@use_as_hot_spare!=nil)
+            @tools.modify_vg('datavg',@use_as_hot_spare)
+            ret.push("Modify '%s'" % [@name])
+          end
         end
         for sub_pv in @physical_volumes.sort
           if !@current_physical_volumes.include?(sub_pv)
             ret.push("Extending '%s' to '%s'" % [sub_pv,@name])
-            @tools.add_pv_into_vg(@name,sub_pv)
+            @tools.add_pv_into_vg(@name,sub_pv,@mirror_pool_name)
           end
         end
         for old_pv in @current_physical_volumes.sort
@@ -84,6 +86,7 @@ module AIXLVM
     attr_accessor :group
     attr_accessor :size
     attr_accessor :copies  # [1, 2, 3]
+    attr_accessor :stripe
     attr_accessor :scheduling_policy  # ['parallel', 'sequential', 'parallel_write_sequential_read', 'parallel_write_round_robin_read']
     def initialize(name,system)
       @name=name
@@ -91,6 +94,7 @@ module AIXLVM
       @group=""
       @size=0
       @copies=1
+      @stripe='n'
       @scheduling_policy='parallel'
 
       @nb_pp=0
@@ -100,6 +104,9 @@ module AIXLVM
 
     def check_to_change()
       @changed=true
+      if not [1,2,3].include?(@copies)
+        raise AIXLVM::LVMException.new('Illegal number of copies!')
+      end
       if not @tools.vg_exist?(@group)
         raise AIXLVM::LVMException.new('volume group "%s" does not exist!' % @group)
       end
@@ -118,10 +125,15 @@ module AIXLVM
         if @diff_pp>0
           free_pp_in_vg=@tools.get_vg_freepp(@group)
           if free_pp_in_vg<@diff_pp
-            raise AIXLVM::LVMException.new('size is too tall!')
+            raise AIXLVM::LVMException.new('Insufficient space available!')
           end
         else
           @changed=(@diff_pp!=0)
+        end
+      else
+        free_pp_in_vg=@tools.get_vg_freepp(@group)
+        if free_pp_in_vg<@nb_pp
+          raise AIXLVM::LVMException.new('Insufficient space available!')
         end
       end
       return @changed
@@ -133,7 +145,7 @@ module AIXLVM
         if @diff_pp==0
           @tools.create_lv(@name,@group,@nb_pp)
           ret.push("Create logical volume '%s' on volume groupe '%s'" % [@name,@group])
-        else 
+        else
           if @diff_pp>0
             @tools.increase_lv(@name,@diff_pp)
           else

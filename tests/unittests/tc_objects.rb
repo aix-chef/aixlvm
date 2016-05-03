@@ -17,15 +17,14 @@ class TestVolumGroup < Test::Unit::TestCase
     @mock = MockSystem.new()
     @volgroup = AIXLVM::VolumeGroup.new('datavg',@mock)
     @volgroup.physical_volumes=['hdisk1', 'hdisk2']
-    @volgroup.physical_partition_size=128
-    @volgroup.max_physical_volumes=32
+    @volgroup.use_as_hot_spare='n'
+    @volgroup.mirror_pool_name=nil
   end
 
   def test_01_pv_dont_exists
     # One or more of the specified physical volume names do not exist
     @mock.add_retrun('lspv | grep "hdisk1 "', 'hdisk1  00f9fd4bf0d1ce48  None')
     @mock.add_retrun("lspv hdisk1 | grep 'VOLUME GROUP:'", nil)
-    @mock.add_retrun("bootinfo -s hdisk1", "4096")
     @mock.add_retrun('lspv | grep "hdisk2 "', nil)
 
     exception = assert_raise(AIXLVM::LVMException) {
@@ -39,7 +38,6 @@ class TestVolumGroup < Test::Unit::TestCase
     # One or more of the specified physical volumes are use in a different volume group
     @mock.add_retrun('lspv | grep "hdisk1 "', 'hdisk1  00f9fd4bf0d1ce48  None')
     @mock.add_retrun("lspv hdisk1 | grep 'VOLUME GROUP:'", 'PHYSICAL VOLUME:    hdisk1                   VOLUME GROUP:     datavg')
-    @mock.add_retrun("bootinfo -s hdisk1", "4096")
     @mock.add_retrun('lspv | grep "hdisk2 "', 'hdisk2  00f9fd4bf0d4e037  None')
     @mock.add_retrun("lspv hdisk2 | grep 'VOLUME GROUP:'", 'PHYSICAL VOLUME:    hdisk2                   VOLUME GROUP:     foovg')
 
@@ -56,10 +54,8 @@ class TestVolumGroup < Test::Unit::TestCase
     return
     @mock.add_retrun('lspv | grep "hdisk1 "', 'hdisk1  00f9fd4bf0d1ce48  None')
     @mock.add_retrun("lspv hdisk1 | grep 'VOLUME GROUP:'", 'PHYSICAL VOLUME:    hdisk1                   VOLUME GROUP:     datavg')
-    @mock.add_retrun("bootinfo -s hdisk1", "4096")
     @mock.add_retrun('lspv | grep "hdisk2 "', 'hdisk2  00f9fd4bf0d4e037  None')
     @mock.add_retrun("lspv hdisk2 | grep 'VOLUME GROUP:'", nil)
-    @mock.add_retrun("bootinfo -s hdisk2", "2048")
 
     exception = assert_raise(AIXLVM::LVMException) {
       @volgroup.check_to_change()
@@ -74,10 +70,8 @@ class TestVolumGroup < Test::Unit::TestCase
     return
     @mock.add_retrun('lspv | grep "hdisk1 "', 'hdisk1  00f9fd4bf0d1ce48  None')
     @mock.add_retrun("lspv hdisk1 | grep 'VOLUME GROUP:'", 'PHYSICAL VOLUME:    hdisk1                   VOLUME GROUP:     datavg')
-    @mock.add_retrun("bootinfo -s hdisk1", "4096")
     @mock.add_retrun('lspv | grep "hdisk2 "', 'hdisk2  00f9fd4bf0d4e037  None')
     @mock.add_retrun("lspv hdisk2 | grep 'VOLUME GROUP:'", nil)
-    @mock.add_retrun("bootinfo -s hdisk2", "2048")
 
     exception = assert_raise(AIXLVM::LVMException) {
       @volgroup.check_to_change()
@@ -86,105 +80,95 @@ class TestVolumGroup < Test::Unit::TestCase
     assert_equal('',@mock.residual())
   end
 
-  def test_05_illegal_nb_max_pv
-    # Illegal number of maximum physical volumes
-    @volgroup.max_physical_volumes=10
+  def test_05_illegal_mirror_pool_name
+    @volgroup.mirror_pool_name="sz!erf-22"
     exception = assert_raise(AIXLVM::LVMException) {
       @volgroup.check_to_change()
     }
-    assert_equal('Illegal number of maximum physical volumes!', exception.message)
+    assert_equal('illegal_mirror_pool_name!', exception.message)
+    @volgroup.mirror_pool_name="copy0poolcopy0pool"
+    exception = assert_raise(AIXLVM::LVMException) {
+      @volgroup.check_to_change()
+    }
+    assert_equal('illegal_mirror_pool_name!', exception.message)
     assert_equal('',@mock.residual())
   end
 
-  def test_06_ppsize_break_limit_nb_pp_per_pv
-    # The physical partition size breaks the limit on the number of physical partitions per physical volume
-    @volgroup.physical_partition_size=10
-    exception = assert_raise(AIXLVM::LVMException) {
-      @volgroup.check_to_change()
-    }
-    assert_equal('The physical partition size must be a power of 2 between 1 and 1024!', exception.message)
-
-    @volgroup.physical_partition_size=2
-    @mock.add_retrun('lspv | grep "hdisk1 "', 'hdisk1  00f9fd4bf0d1ce48  None')
-    @mock.add_retrun("lspv hdisk1 | grep 'VOLUME GROUP:'", 'PHYSICAL VOLUME:    hdisk1                   VOLUME GROUP:     datavg')
-    @mock.add_retrun("bootinfo -s hdisk1", "512")
-    @mock.add_retrun('lspv | grep "hdisk2 "', 'hdisk2  00f9fd4bf0d4e037  None')
-    @mock.add_retrun("lspv hdisk2 | grep 'VOLUME GROUP:'", nil)
-    @mock.add_retrun("bootinfo -s hdisk2", "131072")
-
-    exception = assert_raise(AIXLVM::LVMException) {
-      @volgroup.check_to_change()
-    }
-    assert_equal('The physical partition size breaks the limit on the number of physical partitions per physical volume!', exception.message)
-    assert_equal('',@mock.residual())
-  end
-
-  def test_07_vg_exist_with_diff_ppsize
-    # The volume group already exists with a different physical partition size
-    @mock.add_retrun('lspv | grep "hdisk1 "', 'hdisk1  00f9fd4bf0d1ce48  None')
-    @mock.add_retrun("lspv hdisk1 | grep 'VOLUME GROUP:'", 'PHYSICAL VOLUME:    hdisk1                   VOLUME GROUP:     datavg')
-    @mock.add_retrun("bootinfo -s hdisk1", "4096")
-    @mock.add_retrun('lspv | grep "hdisk2 "', 'hdisk2  00f9fd4bf0d4e037  None')
-    @mock.add_retrun("lspv hdisk2 | grep 'VOLUME GROUP:'", nil)
-    @mock.add_retrun("bootinfo -s hdisk2", "2048")
-    @mock.add_retrun('lsvg | grep datavg','datavg')
-    @mock.add_retrun("lsvg datavg | grep 'PP SIZE:'", 'PP SIZE:        32 megabyte(s)')
-
-    exception = assert_raise(AIXLVM::LVMException) {
-      @volgroup.check_to_change()
-    }
-    assert_equal('The volume group already exists with a different physical partition size!', exception.message)
-    assert_equal('',@mock.residual())
-  end
-
-  def test_08_vg_not_exist
+  def test_06_vg_not_exist
     # VG not exist and not error case
     @mock.add_retrun('lspv | grep "hdisk1 "', 'hdisk1  00f9fd4bf0d1ce48  None')
     @mock.add_retrun("lspv hdisk1 | grep 'VOLUME GROUP:'", nil)
-    @mock.add_retrun("bootinfo -s hdisk1", "4096")
     @mock.add_retrun('lspv | grep "hdisk2 "', 'hdisk2  00f9fd4bf0d4e037  None')
     @mock.add_retrun("lspv hdisk2 | grep 'VOLUME GROUP:'", nil)
-    @mock.add_retrun("bootinfo -s hdisk2", "2048")
     @mock.add_retrun('lsvg | grep datavg', nil)
-    @mock.add_retrun('mkvg -y datavg -s 128 -f hdisk1','')
+    @mock.add_retrun('mkvg -y datavg -S -f hdisk1','')
     @mock.add_retrun('extendvg -f datavg hdisk2','')
     assert_equal(true, @volgroup.check_to_change())
     assert_equal(["Create volume groupe 'datavg'","Extending 'hdisk1' to 'datavg'","Extending 'hdisk2' to 'datavg'"], @volgroup.create())
     assert_equal('',@mock.residual())
   end
 
-  def test_09_vg_exist_no_change
+  def test_07_vg_not_exist_with_hot_spare
     # VG not exist and not error case
+    @volgroup.use_as_hot_spare='y'
+    @mock.add_retrun('lspv | grep "hdisk1 "', 'hdisk1  00f9fd4bf0d1ce48  None')
+    @mock.add_retrun("lspv hdisk1 | grep 'VOLUME GROUP:'", nil)
+    @mock.add_retrun('lspv | grep "hdisk2 "', 'hdisk2  00f9fd4bf0d4e037  None')
+    @mock.add_retrun("lspv hdisk2 | grep 'VOLUME GROUP:'", nil)
+    @mock.add_retrun('lsvg | grep datavg', nil)
+    @mock.add_retrun('mkvg -y datavg -S -f hdisk1','')
+    @mock.add_retrun('chvg -h y datavg','')
+    @mock.add_retrun('extendvg -f datavg hdisk2','')
+    assert_equal(true, @volgroup.check_to_change())
+    assert_equal(["Create volume groupe 'datavg'","Extending 'hdisk1' to 'datavg'","Extending 'hdisk2' to 'datavg'"], @volgroup.create())
+    assert_equal('',@mock.residual())
+  end
+
+  def test_08_vg_not_exist_with_mirror_pool
+    # VG not exist and not error case
+    @volgroup.mirror_pool_name="copy0pool"
+    @mock.add_retrun('lspv | grep "hdisk1 "', 'hdisk1  00f9fd4bf0d1ce48  None')
+    @mock.add_retrun("lspv hdisk1 | grep 'VOLUME GROUP:'", nil)
+    @mock.add_retrun('lspv | grep "hdisk2 "', 'hdisk2  00f9fd4bf0d4e037  None')
+    @mock.add_retrun("lspv hdisk2 | grep 'VOLUME GROUP:'", nil)
+    @mock.add_retrun('lsvg | grep datavg', nil)
+    @mock.add_retrun('mkvg -y datavg -S -p copy0pool -f hdisk1','')
+    @mock.add_retrun('extendvg -p copy0pool -f datavg hdisk2','')
+    assert_equal(true, @volgroup.check_to_change())
+    assert_equal(["Create volume groupe 'datavg'","Extending 'hdisk1' to 'datavg'","Extending 'hdisk2' to 'datavg'"], @volgroup.create())
+    assert_equal('',@mock.residual())
+  end
+
+  def test_09_vg_exist_no_change
+    # VG exist and not error case
     @mock.add_retrun('lspv | grep "hdisk1 "', 'hdisk1  00f9fd4bf0d1ce48  None')
     @mock.add_retrun("lspv hdisk1 | grep 'VOLUME GROUP:'", 'PHYSICAL VOLUME:    hdisk1                   VOLUME GROUP:     datavg')
-    @mock.add_retrun("bootinfo -s hdisk1", "4096")
     @mock.add_retrun('lspv | grep "hdisk2 "', 'hdisk2  00f9fd4bf0d4e037  None')
     @mock.add_retrun("lspv hdisk2 | grep 'VOLUME GROUP:'", 'PHYSICAL VOLUME:    hdisk2                   VOLUME GROUP:     datavg')
-    @mock.add_retrun("bootinfo -s hdisk2", "2048")
     @mock.add_retrun('lsvg | grep datavg', 'datavg')
-    @mock.add_retrun("lsvg datavg | grep 'PP SIZE:'", 'PP SIZE:        128 megabyte(s)')
     @mock.add_retrun("lsvg -p datavg", 'datavg:
     PV_NAME           PV STATE          TOTAL PPs   FREE PPs    FREE DISTRIBUTION
     hdisk1            active            1023        1023        205..205..204..204..205
     hdisk2            active            1023        1023        205..205..204..204..205')
+    @mock.add_retrun("lsvg datavg | grep 'HOT SPARE:'", 'HOT SPARE:          no                       BB POLICY:      relocatable')
+    @mock.add_retrun("lspv -P | grep 'datavg'","")
     assert_equal(false, @volgroup.check_to_change())
     assert_equal([], @volgroup.create())
     assert_equal('',@mock.residual())
   end
 
   def test_10_vg_exist_with_change_add_disk
-    # VG not exist and not error case
+    # VG exist and not error case
     @mock.add_retrun('lspv | grep "hdisk1 "', 'hdisk1  00f9fd4bf0d1ce48  None')
     @mock.add_retrun("lspv hdisk1 | grep 'VOLUME GROUP:'", 'PHYSICAL VOLUME:    hdisk1                   VOLUME GROUP:     datavg')
-    @mock.add_retrun("bootinfo -s hdisk1", "4096")
     @mock.add_retrun('lspv | grep "hdisk2 "', 'hdisk2  00f9fd4bf0d4e037  None')
     @mock.add_retrun("lspv hdisk2 | grep 'VOLUME GROUP:'", nil)
-    @mock.add_retrun("bootinfo -s hdisk2", "2048")
     @mock.add_retrun('lsvg | grep datavg', 'datavg')
-    @mock.add_retrun("lsvg datavg | grep 'PP SIZE:'", 'PP SIZE:        128 megabyte(s)')
     @mock.add_retrun("lsvg -p datavg", 'datavg:
     PV_NAME           PV STATE          TOTAL PPs   FREE PPs    FREE DISTRIBUTION
     hdisk1            active            1023        1023        205..205..204..204..205')
+    @mock.add_retrun("lsvg datavg | grep 'HOT SPARE:'", 'HOT SPARE:          no                       BB POLICY:      relocatable')
+    @mock.add_retrun("lspv -P | grep 'datavg'","")
     @mock.add_retrun('extendvg -f datavg hdisk2','')
     assert_equal(true, @volgroup.check_to_change())
     assert_equal(["Extending 'hdisk2' to 'datavg'"], @volgroup.create())
@@ -192,20 +176,19 @@ class TestVolumGroup < Test::Unit::TestCase
   end
 
   def test_11_vg_exist_with_change_remove_disk
-    # VG not exist and not error case
+    # VG exist and not error case
     @mock.add_retrun('lspv | grep "hdisk1 "', 'hdisk1  00f9fd4bf0d1ce48  None')
     @mock.add_retrun("lspv hdisk1 | grep 'VOLUME GROUP:'", 'PHYSICAL VOLUME:    hdisk1                   VOLUME GROUP:     datavg')
-    @mock.add_retrun("bootinfo -s hdisk1", "4096")
     @mock.add_retrun('lspv | grep "hdisk2 "', 'hdisk2  00f9fd4bf0d4e037  None')
     @mock.add_retrun("lspv hdisk2 | grep 'VOLUME GROUP:'", nil)
-    @mock.add_retrun("bootinfo -s hdisk2", "2048")
     @mock.add_retrun('lsvg | grep datavg', 'datavg')
-    @mock.add_retrun("lsvg datavg | grep 'PP SIZE:'", 'PP SIZE:        128 megabyte(s)')
     @mock.add_retrun("lsvg -p datavg", 'datavg:
     PV_NAME           PV STATE          TOTAL PPs   FREE PPs    FREE DISTRIBUTION
     hdisk1            active            1023        1023        205..205..204..204..205
     hdisk2            active            1023        1023        205..205..204..204..205
     hdisk3            active            1023        1023        205..205..204..204..205')
+    @mock.add_retrun("lsvg datavg | grep 'HOT SPARE:'", 'HOT SPARE:          no                       BB POLICY:      relocatable')
+    @mock.add_retrun("lspv -P | grep 'datavg'","")
     @mock.add_retrun('reducevg -d datavg hdisk3','')
     assert_equal(true, @volgroup.check_to_change())
     assert_equal(["Reducing 'hdisk3' to 'datavg'"], @volgroup.create())
@@ -213,23 +196,61 @@ class TestVolumGroup < Test::Unit::TestCase
   end
 
   def test_12_vg_exist_with_change__add_remove_disk
-    # VG not exist and not error case
+    # VG exist and not error case
     @mock.add_retrun('lspv | grep "hdisk1 "', 'hdisk1  00f9fd4bf0d1ce48  None')
     @mock.add_retrun("lspv hdisk1 | grep 'VOLUME GROUP:'", 'PHYSICAL VOLUME:    hdisk1                   VOLUME GROUP:     datavg')
-    @mock.add_retrun("bootinfo -s hdisk1", "4096")
     @mock.add_retrun('lspv | grep "hdisk2 "', 'hdisk2  00f9fd4bf0d4e037  None')
     @mock.add_retrun("lspv hdisk2 | grep 'VOLUME GROUP:'", nil)
-    @mock.add_retrun("bootinfo -s hdisk2", "2048")
     @mock.add_retrun('lsvg | grep datavg', 'datavg')
-    @mock.add_retrun("lsvg datavg | grep 'PP SIZE:'", 'PP SIZE:        128 megabyte(s)')
     @mock.add_retrun("lsvg -p datavg", 'datavg:
     PV_NAME           PV STATE          TOTAL PPs   FREE PPs    FREE DISTRIBUTION
     hdisk1            active            1023        1023        205..205..204..204..205
     hdisk3            active            1023        1023        205..205..204..204..205')
+    @mock.add_retrun("lsvg datavg | grep 'HOT SPARE:'", 'HOT SPARE:          no                       BB POLICY:      relocatable')
+    @mock.add_retrun("lspv -P | grep 'datavg'","")
     @mock.add_retrun('extendvg -f datavg hdisk2','')
     @mock.add_retrun('reducevg -d datavg hdisk3','')
     assert_equal(true, @volgroup.check_to_change())
     assert_equal(["Extending 'hdisk2' to 'datavg'", "Reducing 'hdisk3' to 'datavg'"], @volgroup.create())
+    assert_equal('',@mock.residual())
+  end
+
+  def test_13_vg_exist_change_hot_spare
+    # VG exist and not error case
+    @volgroup.use_as_hot_spare='y'
+    @mock.add_retrun('lspv | grep "hdisk1 "', 'hdisk1  00f9fd4bf0d1ce48  None')
+    @mock.add_retrun("lspv hdisk1 | grep 'VOLUME GROUP:'", 'PHYSICAL VOLUME:    hdisk1                   VOLUME GROUP:     datavg')
+    @mock.add_retrun('lspv | grep "hdisk2 "', 'hdisk2  00f9fd4bf0d4e037  None')
+    @mock.add_retrun("lspv hdisk2 | grep 'VOLUME GROUP:'", 'PHYSICAL VOLUME:    hdisk2                   VOLUME GROUP:     datavg')
+    @mock.add_retrun('lsvg | grep datavg', 'datavg')
+    @mock.add_retrun("lsvg -p datavg", 'datavg:
+    PV_NAME           PV STATE          TOTAL PPs   FREE PPs    FREE DISTRIBUTION
+    hdisk1            active            1023        1023        205..205..204..204..205
+    hdisk2            active            1023        1023        205..205..204..204..205')
+    @mock.add_retrun("lsvg datavg | grep 'HOT SPARE:'", 'HOT SPARE:          no                       BB POLICY:      relocatable')
+    @mock.add_retrun("lspv -P | grep 'datavg'","")
+    @mock.add_retrun('chvg -h y datavg','')
+    assert_equal(true, @volgroup.check_to_change())
+    assert_equal(["Modify 'datavg'"], @volgroup.create())
+    assert_equal('',@mock.residual())
+  end
+
+  def test_14_vg_exist_change_mirror_pool
+    # VG exist and not error case
+    @volgroup.mirror_pool_name="copy0pool"
+    @mock.add_retrun('lspv | grep "hdisk1 "', 'hdisk1  00f9fd4bf0d1ce48  None')
+    @mock.add_retrun("lspv hdisk1 | grep 'VOLUME GROUP:'", 'PHYSICAL VOLUME:    hdisk1                   VOLUME GROUP:     datavg')
+    @mock.add_retrun('lspv | grep "hdisk2 "', 'hdisk2  00f9fd4bf0d4e037  None')
+    @mock.add_retrun("lspv hdisk2 | grep 'VOLUME GROUP:'", 'PHYSICAL VOLUME:    hdisk2                   VOLUME GROUP:     datavg')
+    @mock.add_retrun('lsvg | grep datavg', 'datavg')
+    @mock.add_retrun("lsvg -p datavg", 'datavg:
+    PV_NAME           PV STATE          TOTAL PPs   FREE PPs    FREE DISTRIBUTION
+    hdisk1            active            1023        1023        205..205..204..204..205
+    hdisk2            active            1023        1023        205..205..204..204..205')
+    @mock.add_retrun("lsvg datavg | grep 'HOT SPARE:'", 'HOT SPARE:          no                       BB POLICY:      relocatable')
+    @mock.add_retrun("lspv -P | grep 'datavg'","")
+    assert_equal(false, @volgroup.check_to_change())
+    assert_equal([], @volgroup.create())
     assert_equal('',@mock.residual())
   end
 
@@ -242,6 +263,9 @@ class TestLogicalVolume < Test::Unit::TestCase
     @logicalvol = AIXLVM::LogicalVolume.new('part1',@mock)
     @logicalvol.group='datavg'
     @logicalvol.size=1024
+    @logicalvol.copies=1
+    @logicalvol.stripe='n'
+    @logicalvol.scheduling_policy='parallel'
   end
 
   def test_01_vg_dont_exists()
@@ -275,39 +299,74 @@ class TestLogicalVolume < Test::Unit::TestCase
     assert_equal('',@mock.residual())
   end
 
-  def test_04_lv_not_exist()
+  def test_04_illegal_number_of_copies()
+    @logicalvol.copies=4
+    exception = assert_raise(AIXLVM::LVMException) {
+      @logicalvol.check_to_change
+    }
+    assert_equal('Illegal number of copies!', exception.message)
+    assert_equal('',@mock.residual())
+  end
+
+  def test_05_insufficient_space_available_not_exits()
     @mock.add_retrun('lsvg | grep datavg', 'datavg')
-    @mock.add_retrun("lsvg datavg | grep 'PP SIZE:'", "VG STATE:           active                   PP SIZE:        64 megabyte(s)")
+    @mock.add_retrun("lsvg datavg | grep 'PP SIZE:'", "VG STATE:           active                   PP SIZE:        4 megabyte(s)")
     @mock.add_retrun('lslv part1', nil)
-    @mock.add_retrun("mklv -y part1 datavg 16", '')
+    @mock.add_retrun("lsvg datavg | grep 'FREE PPs:'", 'MAX LVs:            256                      FREE PPs:       116 (464 megabytes) ')
+    exception = assert_raise(AIXLVM::LVMException) {
+      @logicalvol.check_to_change
+    }
+    assert_equal('Insufficient space available!', exception.message)
+    assert_equal('',@mock.residual())
+  end
+
+  def test_06_insufficient_space_available_exits()
+    @mock.add_retrun('lsvg | grep datavg', 'datavg')
+    @mock.add_retrun("lsvg datavg | grep 'PP SIZE:'", "VG STATE:           active                   PP SIZE:        4 megabyte(s)")
+    @mock.add_retrun('lslv part1', 'LOGICAL VOLUME:     part1                    VOLUME GROUP:   datavg')
+    @mock.add_retrun("lslv part1 | grep 'PPs:'", 'LPs:                10                     PPs:            128 ')
+    @mock.add_retrun("lsvg datavg | grep 'FREE PPs:'", 'MAX LVs:            256                      FREE PPs:       116 (464 megabytes) ')
+    exception = assert_raise(AIXLVM::LVMException) {
+      @logicalvol.check_to_change
+    }
+    assert_equal('Insufficient space available!', exception.message)
+    assert_equal('',@mock.residual())
+  end
+
+  def test_07_lv_not_exist()
+    @mock.add_retrun('lsvg | grep datavg', 'datavg')
+    @mock.add_retrun("lsvg datavg | grep 'PP SIZE:'", "VG STATE:           active                   PP SIZE:        4 megabyte(s)")
+    @mock.add_retrun('lslv part1', nil)
+    @mock.add_retrun("lsvg datavg | grep 'FREE PPs:'", 'MAX LVs:            256                      FREE PPs:       2250 (9000 megabytes) ')
+    @mock.add_retrun("mklv -y part1 datavg 256", '')
     assert_equal(true, @logicalvol.check_to_change)
     assert_equal(["Create logical volume 'part1' on volume groupe 'datavg'"], @logicalvol.create())
     assert_equal('',@mock.residual())
   end
 
-  def test_05_lv_exist_no_change()
+  def test_08_lv_exist_no_change()
     @mock.add_retrun('lsvg | grep datavg', 'datavg')
-    @mock.add_retrun("lsvg datavg | grep 'PP SIZE:'", "VG STATE:           active                   PP SIZE:        64 megabyte(s)")
+    @mock.add_retrun("lsvg datavg | grep 'PP SIZE:'", "VG STATE:           active                   PP SIZE:        4 megabyte(s)")
     @mock.add_retrun('lslv part1', 'LOGICAL VOLUME:     part1                    VOLUME GROUP:   datavg')
-    @mock.add_retrun("lslv part1 | grep 'PPs:'", 'LPs:                10                     PPs:            16 ')
+    @mock.add_retrun("lslv part1 | grep 'PPs:'", 'LPs:                10                     PPs:            256 ')
     assert_equal(false, @logicalvol.check_to_change)
     assert_equal([], @logicalvol.create())
     assert_equal('',@mock.residual())
   end
 
-  def test_06_lv_exist_with_size_increase()
+  def test_09_lv_exist_with_size_increase()
     @mock.add_retrun('lsvg | grep datavg', 'datavg')
-    @mock.add_retrun("lsvg datavg | grep 'PP SIZE:'", "VG STATE:           active                   PP SIZE:        64 megabyte(s)")
+    @mock.add_retrun("lsvg datavg | grep 'PP SIZE:'", "VG STATE:           active                   PP SIZE:        4 megabyte(s)")
     @mock.add_retrun('lslv part1', 'LOGICAL VOLUME:     part1                    VOLUME GROUP:   datavg')
-    @mock.add_retrun("lslv part1 | grep 'PPs:'", 'LPs:                10                     PPs:            10 ')
-    @mock.add_retrun("lsvg datavg | grep 'FREE PPs:'", 'MAX LVs:            256                      FREE PPs:       116 (7424 megabytes) ')
-    @mock.add_retrun("extendlv part1 6", '')
+    @mock.add_retrun("lslv part1 | grep 'PPs:'", 'LPs:                10                     PPs:            128 ')
+    @mock.add_retrun("lsvg datavg | grep 'FREE PPs:'", 'MAX LVs:            256                      FREE PPs:       2250 (9000 megabytes) ')
+    @mock.add_retrun("extendlv part1 128", '')
     assert_equal(true, @logicalvol.check_to_change)
     assert_equal(["Modify logical volume 'part1'"], @logicalvol.create())
     assert_equal('',@mock.residual())
   end
 
-  def test_07_lv_exist_with_size_reduce()
+  def test_10_lv_exist_with_size_reduce()
     print("??? how to reduce ???\n")
     return
   end
