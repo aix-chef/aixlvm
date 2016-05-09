@@ -100,7 +100,7 @@ class TestVolumGroup < Test::Unit::TestCase
     @mock.add_retrun("lspv hdisk1 | grep 'VOLUME GROUP:'", nil)
     @mock.add_retrun('lspv | grep "hdisk2 "', 'hdisk2  00f9fd4bf0d4e037  None')
     @mock.add_retrun("lspv hdisk2 | grep 'VOLUME GROUP:'", nil)
-    @mock.add_retrun('lsvg | grep datavg', nil)
+    @mock.add_retrun('lsvg datavg', nil)
     @mock.add_retrun('mkvg -y datavg -S -f hdisk1','')
     @mock.add_retrun('extendvg -f datavg hdisk2','')
     assert_equal(true, @volgroup.check_to_change())
@@ -115,7 +115,7 @@ class TestVolumGroup < Test::Unit::TestCase
     @mock.add_retrun("lspv hdisk1 | grep 'VOLUME GROUP:'", nil)
     @mock.add_retrun('lspv | grep "hdisk2 "', 'hdisk2  00f9fd4bf0d4e037  None')
     @mock.add_retrun("lspv hdisk2 | grep 'VOLUME GROUP:'", nil)
-    @mock.add_retrun('lsvg | grep datavg', nil)
+    @mock.add_retrun('lsvg datavg', nil)
     @mock.add_retrun('mkvg -y datavg -S -f hdisk1','')
     @mock.add_retrun('chvg -h y datavg','')
     @mock.add_retrun('extendvg -f datavg hdisk2','')
@@ -131,7 +131,7 @@ class TestVolumGroup < Test::Unit::TestCase
     @mock.add_retrun("lspv hdisk1 | grep 'VOLUME GROUP:'", nil)
     @mock.add_retrun('lspv | grep "hdisk2 "', 'hdisk2  00f9fd4bf0d4e037  None')
     @mock.add_retrun("lspv hdisk2 | grep 'VOLUME GROUP:'", nil)
-    @mock.add_retrun('lsvg | grep datavg', nil)
+    @mock.add_retrun('lsvg datavg', nil)
     @mock.add_retrun('mkvg -y datavg -S -p copy0pool -f hdisk1','')
     @mock.add_retrun('extendvg -p copy0pool -f datavg hdisk2','')
     assert_equal(true, @volgroup.check_to_change())
@@ -145,12 +145,26 @@ class TestVolumGroup < Test::Unit::TestCase
     @mock.add_retrun("lspv hdisk1 | grep 'VOLUME GROUP:'", 'PHYSICAL VOLUME:    hdisk1                   VOLUME GROUP:     datavg')
     @mock.add_retrun('lspv | grep "hdisk2 "', 'hdisk2  00f9fd4bf0d4e037  None')
     @mock.add_retrun("lspv hdisk2 | grep 'VOLUME GROUP:'", 'PHYSICAL VOLUME:    hdisk2                   VOLUME GROUP:     datavg')
-    @mock.add_retrun('lsvg | grep datavg', 'datavg')
+    @mock.add_retrun('lsvg datavg', 'VOLUME GROUP:       datavg                   VG IDENTIFIER:  00f9fd4b00004c00000001547adb7ade
+    VG STATE:           active                   PP SIZE:        4 megabyte(s)
+    VG PERMISSION:      read/write               TOTAL PPs:      3018 (12072 megabytes)
+    MAX LVs:            256                      FREE PPs:       2250 (9000 megabytes)
+    LVs:                2                        USED PPs:       768 (3072 megabytes)
+    OPEN LVs:           0                        QUORUM:         2 (Enabled)
+    TOTAL PVs:          3                        VG DESCRIPTORS: 3
+    STALE PVs:          0                        STALE PPs:      0
+    ACTIVE PVs:         3                        AUTO ON:        yes
+    MAX PPs per VG:     32768                    MAX PVs:        1024
+    LTG size (Dynamic): 512 kilobyte(s)          AUTO SYNC:      no
+    HOT SPARE:          no                       BB POLICY:      relocatable
+    MIRROR POOL STRICT: off
+    PV RESTRICTION:     none                     INFINITE RETRY: no
+    DISK BLOCK SIZE:    512                      CRITICAL VG:    no
+')
     @mock.add_retrun("lsvg -p datavg", 'datavg:
     PV_NAME           PV STATE          TOTAL PPs   FREE PPs    FREE DISTRIBUTION
     hdisk1            active            1023        1023        205..205..204..204..205
     hdisk2            active            1023        1023        205..205..204..204..205')
-    @mock.add_retrun("lsvg datavg | grep 'HOT SPARE:'", 'HOT SPARE:          no                       BB POLICY:      relocatable')
     @mock.add_retrun("lspv -P | grep 'datavg'","")
     assert_equal(false, @volgroup.check_to_change())
     assert_equal([], @volgroup.create())
@@ -163,11 +177,25 @@ class TestVolumGroup < Test::Unit::TestCase
     @mock.add_retrun("lspv hdisk1 | grep 'VOLUME GROUP:'", 'PHYSICAL VOLUME:    hdisk1                   VOLUME GROUP:     datavg')
     @mock.add_retrun('lspv | grep "hdisk2 "', 'hdisk2  00f9fd4bf0d4e037  None')
     @mock.add_retrun("lspv hdisk2 | grep 'VOLUME GROUP:'", nil)
-    @mock.add_retrun('lsvg | grep datavg', 'datavg')
+    @mock.add_retrun('lsvg datavg', 'VOLUME GROUP:       datavg                   VG IDENTIFIER:  00f9fd4b00004c00000001547adb7ade
+    VG STATE:           active                   PP SIZE:        4 megabyte(s)
+    VG PERMISSION:      read/write               TOTAL PPs:      3018 (12072 megabytes)
+    MAX LVs:            256                      FREE PPs:       2250 (9000 megabytes)
+    LVs:                2                        USED PPs:       768 (3072 megabytes)
+    OPEN LVs:           0                        QUORUM:         2 (Enabled)
+    TOTAL PVs:          3                        VG DESCRIPTORS: 3
+    STALE PVs:          0                        STALE PPs:      0
+    ACTIVE PVs:         3                        AUTO ON:        yes
+    MAX PPs per VG:     32768                    MAX PVs:        1024
+    LTG size (Dynamic): 512 kilobyte(s)          AUTO SYNC:      no
+    HOT SPARE:          no                       BB POLICY:      relocatable
+    MIRROR POOL STRICT: off
+    PV RESTRICTION:     none                     INFINITE RETRY: no
+    DISK BLOCK SIZE:    512                      CRITICAL VG:    no
+')
     @mock.add_retrun("lsvg -p datavg", 'datavg:
     PV_NAME           PV STATE          TOTAL PPs   FREE PPs    FREE DISTRIBUTION
     hdisk1            active            1023        1023        205..205..204..204..205')
-    @mock.add_retrun("lsvg datavg | grep 'HOT SPARE:'", 'HOT SPARE:          no                       BB POLICY:      relocatable')
     @mock.add_retrun("lspv -P | grep 'datavg'","")
     @mock.add_retrun('extendvg -f datavg hdisk2','')
     assert_equal(true, @volgroup.check_to_change())
@@ -181,13 +209,27 @@ class TestVolumGroup < Test::Unit::TestCase
     @mock.add_retrun("lspv hdisk1 | grep 'VOLUME GROUP:'", 'PHYSICAL VOLUME:    hdisk1                   VOLUME GROUP:     datavg')
     @mock.add_retrun('lspv | grep "hdisk2 "', 'hdisk2  00f9fd4bf0d4e037  None')
     @mock.add_retrun("lspv hdisk2 | grep 'VOLUME GROUP:'", nil)
-    @mock.add_retrun('lsvg | grep datavg', 'datavg')
+    @mock.add_retrun('lsvg datavg', 'VOLUME GROUP:       datavg                   VG IDENTIFIER:  00f9fd4b00004c00000001547adb7ade
+    VG STATE:           active                   PP SIZE:        4 megabyte(s)
+    VG PERMISSION:      read/write               TOTAL PPs:      3018 (12072 megabytes)
+    MAX LVs:            256                      FREE PPs:       2250 (9000 megabytes)
+    LVs:                2                        USED PPs:       768 (3072 megabytes)
+    OPEN LVs:           0                        QUORUM:         2 (Enabled)
+    TOTAL PVs:          3                        VG DESCRIPTORS: 3
+    STALE PVs:          0                        STALE PPs:      0
+    ACTIVE PVs:         3                        AUTO ON:        yes
+    MAX PPs per VG:     32768                    MAX PVs:        1024
+    LTG size (Dynamic): 512 kilobyte(s)          AUTO SYNC:      no
+    HOT SPARE:          no                       BB POLICY:      relocatable
+    MIRROR POOL STRICT: off
+    PV RESTRICTION:     none                     INFINITE RETRY: no
+    DISK BLOCK SIZE:    512                      CRITICAL VG:    no
+')
     @mock.add_retrun("lsvg -p datavg", 'datavg:
     PV_NAME           PV STATE          TOTAL PPs   FREE PPs    FREE DISTRIBUTION
     hdisk1            active            1023        1023        205..205..204..204..205
     hdisk2            active            1023        1023        205..205..204..204..205
     hdisk3            active            1023        1023        205..205..204..204..205')
-    @mock.add_retrun("lsvg datavg | grep 'HOT SPARE:'", 'HOT SPARE:          no                       BB POLICY:      relocatable')
     @mock.add_retrun("lspv -P | grep 'datavg'","")
     @mock.add_retrun('reducevg -d datavg hdisk3','')
     assert_equal(true, @volgroup.check_to_change())
@@ -201,12 +243,26 @@ class TestVolumGroup < Test::Unit::TestCase
     @mock.add_retrun("lspv hdisk1 | grep 'VOLUME GROUP:'", 'PHYSICAL VOLUME:    hdisk1                   VOLUME GROUP:     datavg')
     @mock.add_retrun('lspv | grep "hdisk2 "', 'hdisk2  00f9fd4bf0d4e037  None')
     @mock.add_retrun("lspv hdisk2 | grep 'VOLUME GROUP:'", nil)
-    @mock.add_retrun('lsvg | grep datavg', 'datavg')
+    @mock.add_retrun('lsvg datavg', 'VOLUME GROUP:       datavg                   VG IDENTIFIER:  00f9fd4b00004c00000001547adb7ade
+    VG STATE:           active                   PP SIZE:        4 megabyte(s)
+    VG PERMISSION:      read/write               TOTAL PPs:      3018 (12072 megabytes)
+    MAX LVs:            256                      FREE PPs:       2250 (9000 megabytes)
+    LVs:                2                        USED PPs:       768 (3072 megabytes)
+    OPEN LVs:           0                        QUORUM:         2 (Enabled)
+    TOTAL PVs:          3                        VG DESCRIPTORS: 3
+    STALE PVs:          0                        STALE PPs:      0
+    ACTIVE PVs:         3                        AUTO ON:        yes
+    MAX PPs per VG:     32768                    MAX PVs:        1024
+    LTG size (Dynamic): 512 kilobyte(s)          AUTO SYNC:      no
+    HOT SPARE:          no                       BB POLICY:      relocatable
+    MIRROR POOL STRICT: off
+    PV RESTRICTION:     none                     INFINITE RETRY: no
+    DISK BLOCK SIZE:    512                      CRITICAL VG:    no
+')
     @mock.add_retrun("lsvg -p datavg", 'datavg:
     PV_NAME           PV STATE          TOTAL PPs   FREE PPs    FREE DISTRIBUTION
     hdisk1            active            1023        1023        205..205..204..204..205
     hdisk3            active            1023        1023        205..205..204..204..205')
-    @mock.add_retrun("lsvg datavg | grep 'HOT SPARE:'", 'HOT SPARE:          no                       BB POLICY:      relocatable')
     @mock.add_retrun("lspv -P | grep 'datavg'","")
     @mock.add_retrun('extendvg -f datavg hdisk2','')
     @mock.add_retrun('reducevg -d datavg hdisk3','')
@@ -222,12 +278,26 @@ class TestVolumGroup < Test::Unit::TestCase
     @mock.add_retrun("lspv hdisk1 | grep 'VOLUME GROUP:'", 'PHYSICAL VOLUME:    hdisk1                   VOLUME GROUP:     datavg')
     @mock.add_retrun('lspv | grep "hdisk2 "', 'hdisk2  00f9fd4bf0d4e037  None')
     @mock.add_retrun("lspv hdisk2 | grep 'VOLUME GROUP:'", 'PHYSICAL VOLUME:    hdisk2                   VOLUME GROUP:     datavg')
-    @mock.add_retrun('lsvg | grep datavg', 'datavg')
+    @mock.add_retrun('lsvg datavg', 'VOLUME GROUP:       datavg                   VG IDENTIFIER:  00f9fd4b00004c00000001547adb7ade
+    VG STATE:           active                   PP SIZE:        4 megabyte(s)
+    VG PERMISSION:      read/write               TOTAL PPs:      3018 (12072 megabytes)
+    MAX LVs:            256                      FREE PPs:       2250 (9000 megabytes)
+    LVs:                2                        USED PPs:       768 (3072 megabytes)
+    OPEN LVs:           0                        QUORUM:         2 (Enabled)
+    TOTAL PVs:          3                        VG DESCRIPTORS: 3
+    STALE PVs:          0                        STALE PPs:      0
+    ACTIVE PVs:         3                        AUTO ON:        yes
+    MAX PPs per VG:     32768                    MAX PVs:        1024
+    LTG size (Dynamic): 512 kilobyte(s)          AUTO SYNC:      no
+    HOT SPARE:          no                       BB POLICY:      relocatable
+    MIRROR POOL STRICT: off
+    PV RESTRICTION:     none                     INFINITE RETRY: no
+    DISK BLOCK SIZE:    512                      CRITICAL VG:    no
+')
     @mock.add_retrun("lsvg -p datavg", 'datavg:
     PV_NAME           PV STATE          TOTAL PPs   FREE PPs    FREE DISTRIBUTION
     hdisk1            active            1023        1023        205..205..204..204..205
     hdisk2            active            1023        1023        205..205..204..204..205')
-    @mock.add_retrun("lsvg datavg | grep 'HOT SPARE:'", 'HOT SPARE:          no                       BB POLICY:      relocatable')
     @mock.add_retrun("lspv -P | grep 'datavg'","")
     @mock.add_retrun('chvg -h y datavg','')
     assert_equal(true, @volgroup.check_to_change())
@@ -242,12 +312,26 @@ class TestVolumGroup < Test::Unit::TestCase
     @mock.add_retrun("lspv hdisk1 | grep 'VOLUME GROUP:'", 'PHYSICAL VOLUME:    hdisk1                   VOLUME GROUP:     datavg')
     @mock.add_retrun('lspv | grep "hdisk2 "', 'hdisk2  00f9fd4bf0d4e037  None')
     @mock.add_retrun("lspv hdisk2 | grep 'VOLUME GROUP:'", 'PHYSICAL VOLUME:    hdisk2                   VOLUME GROUP:     datavg')
-    @mock.add_retrun('lsvg | grep datavg', 'datavg')
+    @mock.add_retrun('lsvg datavg', 'VOLUME GROUP:       datavg                   VG IDENTIFIER:  00f9fd4b00004c00000001547adb7ade
+    VG STATE:           active                   PP SIZE:        4 megabyte(s)
+    VG PERMISSION:      read/write               TOTAL PPs:      3018 (12072 megabytes)
+    MAX LVs:            256                      FREE PPs:       2250 (9000 megabytes)
+    LVs:                2                        USED PPs:       768 (3072 megabytes)
+    OPEN LVs:           0                        QUORUM:         2 (Enabled)
+    TOTAL PVs:          3                        VG DESCRIPTORS: 3
+    STALE PVs:          0                        STALE PPs:      0
+    ACTIVE PVs:         3                        AUTO ON:        yes
+    MAX PPs per VG:     32768                    MAX PVs:        1024
+    LTG size (Dynamic): 512 kilobyte(s)          AUTO SYNC:      no
+    HOT SPARE:          no                       BB POLICY:      relocatable
+    MIRROR POOL STRICT: off
+    PV RESTRICTION:     none                     INFINITE RETRY: no
+    DISK BLOCK SIZE:    512                      CRITICAL VG:    no
+')
     @mock.add_retrun("lsvg -p datavg", 'datavg:
     PV_NAME           PV STATE          TOTAL PPs   FREE PPs    FREE DISTRIBUTION
     hdisk1            active            1023        1023        205..205..204..204..205
     hdisk2            active            1023        1023        205..205..204..204..205')
-    @mock.add_retrun("lsvg datavg | grep 'HOT SPARE:'", 'HOT SPARE:          no                       BB POLICY:      relocatable')
     @mock.add_retrun("lspv -P | grep 'datavg'","")
     assert_equal(false, @volgroup.check_to_change())
     assert_equal([], @volgroup.create())
