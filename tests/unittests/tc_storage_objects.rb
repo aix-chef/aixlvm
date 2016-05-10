@@ -26,7 +26,7 @@ class TestStorage_PV < Test::Unit::TestCase
     assert_equal('',@mock.residual())
   end
 
-  def test_04_get_vgname
+  def test_02_get_vgname
     @mock.add_retrun("lspv hdisk1 | grep 'VOLUME GROUP:'", nil)
     @mock.add_retrun("lspv hdisk1 | grep 'VOLUME GROUP:'", 'PHYSICAL VOLUME:    hdisk2                   VOLUME GROUP:     datavg
 ')
@@ -43,7 +43,7 @@ class TestStorage_VG < Test::Unit::TestCase
     @stobj = AIXLVM::StObjVG.new(@mock,"datavg")
   end
 
-  def test_02_exists
+  def test_01_exists
     @mock.add_retrun('lsvg datavg', 'VOLUME GROUP:       datavg                   VG IDENTIFIER:  00f9fd4b00004c00000001547adb7ade
     VG STATE:           active                   PP SIZE:        4 megabyte(s)
     VG PERMISSION:      read/write               TOTAL PPs:      3018 (12072 megabytes)
@@ -67,7 +67,7 @@ class TestStorage_VG < Test::Unit::TestCase
     assert_equal('',@mock.residual())
   end
 
-  def test_05_get_ppsize
+  def test_02_get_ppsize
     @mock.add_retrun('lsvg datavg', 'VOLUME GROUP:       datavg                   VG IDENTIFIER:  00f9fd4b00004c00000001547adb7ade
     VG STATE:           active                   PP SIZE:        4 megabyte(s)
     VG PERMISSION:      read/write               TOTAL PPs:      3018 (12072 megabytes)
@@ -91,7 +91,7 @@ class TestStorage_VG < Test::Unit::TestCase
     assert_equal('',@mock.residual())
   end
 
-  def test_06_get_pv_list
+  def test_03_get_pv_list
     @mock.add_retrun("lsvg -p datavg", nil)
     @mock.add_retrun("lsvg -p datavg", 'datavg:
     PV_NAME           PV STATE          TOTAL PPs   FREE PPs    FREE DISTRIBUTION
@@ -104,7 +104,7 @@ class TestStorage_VG < Test::Unit::TestCase
     assert_equal('',@mock.residual())
   end
 
-  def test_07_hot_spare
+  def test_04_hot_spare
     @mock.add_retrun('lsvg datavg', 'VOLUME GROUP:       datavg                   VG IDENTIFIER:  00f9fd4b00004c00000001547adb7ade
     VG STATE:           active                   PP SIZE:        4 megabyte(s)
     VG PERMISSION:      read/write               TOTAL PPs:      3018 (12072 megabytes)
@@ -146,7 +146,7 @@ class TestStorage_VG < Test::Unit::TestCase
     assert_equal('',@mock.residual())
   end
 
-  def test_08_get_totalpp
+  def test_05_get_totalpp
     @mock.add_retrun('lsvg datavg', 'VOLUME GROUP:       datavg                   VG IDENTIFIER:  00f9fd4b00004c00000001547adb7ade
     VG STATE:           active                   PP SIZE:        4 megabyte(s)
     VG PERMISSION:      read/write               TOTAL PPs:      3018 (12072 megabytes)
@@ -170,7 +170,7 @@ class TestStorage_VG < Test::Unit::TestCase
     assert_equal('',@mock.residual())
   end
 
-  def test_03_get_freepp
+  def test_06_get_freepp
     @mock.add_retrun('lsvg datavg', 'VOLUME GROUP:       datavg                   VG IDENTIFIER:  00f9fd4b00004c00000001547adb7ade
     VG STATE:           active                   PP SIZE:        4 megabyte(s)
     VG PERMISSION:      read/write               TOTAL PPs:      3018 (12072 megabytes)
@@ -194,7 +194,7 @@ class TestStorage_VG < Test::Unit::TestCase
     assert_equal('',@mock.residual())
   end
 
-  def test_09_get_mirrorpool
+  def test_07_get_mirrorpool
     @mock.add_retrun("lspv -P | grep 'datavg'", nil)
     @mock.add_retrun("lspv -P | grep 'datavg'", 'hdisk1            datavg
 hdisk2            datavg
@@ -213,7 +213,7 @@ hdisk3            datavg            mymirror')
     assert_equal('',@mock.residual())
   end
 
-  def test_10_create
+  def test_08_create
     @mock.add_retrun("mkvg -y datavg -S -f hdisk1", '')
     @mock.add_retrun("mkvg -y datavg -S -p mirrorpool -f hdisk1", '')
     @mock.add_retrun("mkvg -y datavg -S -f hdisk2", nil)
@@ -226,7 +226,7 @@ hdisk3            datavg            mymirror')
     assert_equal('',@mock.residual())
   end
 
-  def test_11_modify
+  def test_09_modify
     @mock.add_retrun("chvg -h y datavg", '')
     @mock.add_retrun("chvg -h n datavg", nil)
     @stobj.modify('y')
@@ -237,7 +237,7 @@ hdisk3            datavg            mymirror')
     assert_equal('',@mock.residual())
   end
 
-  def test_12_add_pv
+  def test_10_add_pv
     @mock.add_retrun("extendvg -f datavg hdisk2", '')
     @mock.add_retrun("extendvg -p mypool -f datavg hdisk2", '')
     @mock.add_retrun("extendvg -f datavg hdisk2", nil)
@@ -250,7 +250,7 @@ hdisk3            datavg            mymirror')
     assert_equal('',@mock.residual())
   end
 
-  def test_13_delete_pv
+  def test_11_delete_pv
     @mock.add_retrun("reducevg -d datavg hdisk3", '')
     @mock.add_retrun("reducevg -d datavg hdisk3", nil)
     @stobj.delete_pv('hdisk3')
@@ -269,7 +269,7 @@ class TestStorage_LV < Test::Unit::TestCase
     @stobj = AIXLVM::StObjLV.new(@mock,'hd1')
   end
 
-  def test_03_exists
+  def test_01_exists
     @mock.add_retrun('lslv hd1', 'LOGICAL VOLUME:     hd1                    VOLUME GROUP:   rootvg
 LV IDENTIFIER:      00f9fd4b00004c0000000153e61e5d00.8 PERMISSION:     read/write
 VG STATE:           active/complete        LV STATE:       opened/syncd
@@ -293,7 +293,7 @@ INFINITE RETRY:     no
     assert_equal('',@mock.residual())
   end
 
-  def test_01_get_vg
+  def test_02_get_vg
     @mock.add_retrun('lslv hd1', 'LOGICAL VOLUME:     hd1                    VOLUME GROUP:   rootvg
 LV IDENTIFIER:      00f9fd4b00004c0000000153e61e5d00.8 PERMISSION:     read/write
 VG STATE:           active/complete        LV STATE:       opened/syncd
@@ -316,7 +316,7 @@ INFINITE RETRY:     no
     assert_equal(nil, @stobj.get_vg)
   end
 
-  def test_02_get_nbpp
+  def test_03_get_nbpp
     @mock.add_retrun('lslv hd1', 'LOGICAL VOLUME:     hd1                    VOLUME GROUP:   rootvg
 LV IDENTIFIER:      00f9fd4b00004c0000000153e61e5d00.8 PERMISSION:     read/write
 VG STATE:           active/complete        LV STATE:       opened/syncd
@@ -335,11 +335,36 @@ INFINITE RETRY:     no
 ')
     @mock.add_retrun('lslv hd1', nil)
     assert_equal(12, @stobj.get_nbpp)
+    assert_equal(4, @stobj.get_ppsize)
+    @stobj = AIXLVM::StObjLV.new(@mock,'hd1')
+    assert_equal(nil, @stobj.get_nbpp)
+    assert_equal(nil, @stobj.get_ppsize)
+  end
+
+  def test_04_get_mount
+    @mock.add_retrun('lslv hd1', 'LOGICAL VOLUME:     hd1                    VOLUME GROUP:   rootvg
+LV IDENTIFIER:      00f9fd4b00004c0000000153e61e5d00.8 PERMISSION:     read/write
+VG STATE:           active/complete        LV STATE:       opened/syncd
+TYPE:               jfs2                   WRITE VERIFY:   off
+MAX LPs:            512                    PP SIZE:        4 megabyte(s)
+COPIES:             1                      SCHED POLICY:   parallel
+LPs:                1                      PPs:            12
+STALE PPs:          0                      BB POLICY:      relocatable
+INTER-POLICY:       minimum                RELOCATABLE:    yes
+INTRA-POLICY:       center                 UPPER BOUND:    32
+MOUNT POINT:        /opt/data              LABEL:          /opt/data
+MIRROR WRITE CONSISTENCY: on/ACTIVE
+EACH LP COPY ON A SEPARATE PV ?: yes
+Serialize IO ?:     NO
+INFINITE RETRY:     no
+')
+    @mock.add_retrun('lslv hd1', nil)
+    assert_equal("/opt/data", @stobj.get_mount)
     @stobj = AIXLVM::StObjLV.new(@mock,'hd1')
     assert_equal(nil, @stobj.get_nbpp)
   end
 
-  def test_04_create
+  def test_05_create
     @mock.add_retrun("mklv -y hd1 datavg 10", '')
     @mock.add_retrun("mklv -y hd1 datavg 20", nil)
     @stobj.create('datavg',10)
@@ -350,7 +375,7 @@ INFINITE RETRY:     no
     assert_equal('',@mock.residual())
   end
 
-  def test_05_increase
+  def test_06_increase
     @mock.add_retrun("extendlv hd1 10", '')
     @mock.add_retrun("extendlv hd1 20", nil)
     @stobj.increase(10)
@@ -361,4 +386,32 @@ INFINITE RETRY:     no
     assert_equal('',@mock.residual())
   end
 
+end
+
+class TestStorage_FS < Test::Unit::TestCase
+  def setup
+    print("\n")
+    @mock = MockSystem.new()
+    @stobj = AIXLVM::StObjFS.new(@mock,'/opt/data')
+  end
+
+  def test_01_exists
+    @mock.add_retrun("lsfs -c /opt/data","#MountPoint:Device:Vfs:Nodename:Type:Size:Options:AutoMount:Acct
+/opt/data:part1:jfs2:::2031616:rw:yes:no")
+    @mock.add_retrun("lsfs -c /opt/data",nil)
+    assert_equal(true, @stobj.exist?)
+    @stobj = AIXLVM::StObjFS.new(@mock,'/opt/data')
+    assert_equal(false, @stobj.exist?)
+    assert_equal('',@mock.residual())
+  end
+  
+  def test_02_get_size
+    @mock.add_retrun("lsfs -c /opt/data","#MountPoint:Device:Vfs:Nodename:Type:Size:Options:AutoMount:Acct
+/opt/data:part1:jfs2:::2031616:rw:yes:no")
+    @mock.add_retrun("lsfs -c /opt/data",nil)
+    assert_equal(1015808, @stobj.get_size)
+    @stobj = AIXLVM::StObjFS.new(@mock,'/opt/data')
+    assert_equal(nil, @stobj.get_size)
+  end
+  
 end

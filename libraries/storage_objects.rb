@@ -183,7 +183,7 @@ module AIXLVM
       @name=name
       @descript=0
     end
-    
+
     def read
       if @descript==0
         @descript=@system.run('lslv %s' % @name)
@@ -204,10 +204,28 @@ module AIXLVM
       end
     end
 
+    def get_ppsize
+      read
+      if @descript!=nil
+        return @descript[/PP SIZE:\s*(.*)\s*/,1].to_i
+      else
+        return nil
+      end
+    end
+    
     def get_nbpp
       read
       if @descript!=nil
         return @descript[/PPs:\s*(.*)\s*/,1].to_i
+      else
+        return nil
+      end
+    end
+    
+    def get_mount
+      read
+      if @descript!=nil
+        return @descript[/MOUNT POINT:\s*([^\s]*)\s/,1]
       else
         return nil
       end
@@ -228,6 +246,36 @@ module AIXLVM
         return out
       else
         raise AIXLVM::LVMException.new("system error:%s" % @system.last_error)
+      end
+    end
+  end
+
+  class StObjFS
+    def initialize(system,name)
+      @system=system
+      @name=name
+      @descript=0
+    end
+
+    def read
+      if @descript==0
+        @descript=@system.run('lsfs -c %s' % @name)
+      end
+    end
+
+    def exist?
+      read
+      return @descript!=nil
+    end
+    
+    def get_size
+      read
+      if @descript!=nil
+        lines=@descript.split("\n")
+        vals=lines[1].split(":")
+        return vals[5].to_f/2
+      else
+        return nil
       end
     end
   end

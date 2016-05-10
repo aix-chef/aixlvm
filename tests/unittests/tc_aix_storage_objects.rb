@@ -22,14 +22,14 @@ class TestAIXStorage_PV < Test::Unit::TestCase
     assert_equal(false, @stobj.exist?)
   end
 
-  def test_04_get_vgname
+  def test_02_get_vgname
     @stobj = AIXLVM::StObjPV.new(AIXLVM::System.new(),"hdisk10")
     assert_equal(nil, @stobj.get_vgname)
     @stobj = AIXLVM::StObjPV.new(AIXLVM::System.new(),"hdisk0")
     assert_equal('rootvg', @stobj.get_vgname)
   end
 
-  def test_07_get_size
+  def test_03_get_size
     @stobj = AIXLVM::StObjPV.new(AIXLVM::System.new(),"hdisk0")
     assert_equal(16384, @stobj.get_size)
     @stobj = AIXLVM::StObjPV.new(AIXLVM::System.new(),"hdisk1")
@@ -57,56 +57,56 @@ class TestAIXStorage_VG < Test::Unit::TestCase
     system("extendvg -f datavg hdisk2 2>/dev/null")
   end
 
-  def test_02_exists
+  def test_01_exists
     @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"datavg")
     assert_equal(true, @stobj.exist?)
     @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"foovg")
     assert_equal(false, @stobj.exist?)
   end
 
-  def test_05_get_ppsize
+  def test_02_get_ppsize
     @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"datavg")
     assert_equal(4, @stobj.get_ppsize)
     @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"foovg")
     assert_equal(nil, @stobj.get_ppsize)
   end
 
-  def test_06_get_pv_list
+  def test_03_get_pv_list
     @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"foovg")
     assert_equal([], @stobj.get_pv_list)
     @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"datavg")
     assert_equal(['hdisk1','hdisk2'], @stobj.get_pv_list)
   end
 
-  def test_07_hot_spare
+  def test_04_hot_spare
     @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"datavg")
     assert_equal(true, @stobj.hot_spare?)
     @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"foovg")
     assert_equal(nil, @stobj.hot_spare?)
   end
 
-  def test_08_get_totalpp
+  def test_05_get_totalpp
     @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"datavg")
     assert_equal(2012, @stobj.get_totalpp)
     @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"foovg")
     assert_equal(nil, @stobj.get_totalpp)
   end
 
-  def test_03_get_freepp
+  def test_06_get_freepp
     @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"datavg")
     assert_equal(2012, @stobj.get_freepp)
     @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"foovg")
     assert_equal(nil, @stobj.get_freepp)
   end
 
-  def test_09_get_mirrorpool
+  def test_07_get_mirrorpool
     @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"foovg")
     assert_equal(nil, @stobj.get_mirrorpool)
     @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"datavg")
     assert_equal('', @stobj.get_mirrorpool)
   end
 
-  def test_10_create
+  def test_08_create
     @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"othervg")
     @stobj.create('hdisk4','mymirror')
     @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"foovg")
@@ -116,7 +116,7 @@ class TestAIXStorage_VG < Test::Unit::TestCase
     assert_equal('system error:0516-306 mkvg: Unable to find physical volume hdisk10 in the Device', exception.message[0,80])
   end
 
-  def test_11_modify
+  def test_09_modify
     @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"datavg")
     @stobj.modify('y')
     @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"foovg")
@@ -126,7 +126,7 @@ class TestAIXStorage_VG < Test::Unit::TestCase
     assert_equal('system error:0516-306 getlvodm: Unable to find volume group foovg in the Device', exception.message[0,79])
   end
 
-  def test_12_add_pv
+  def test_10_add_pv
     @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"datavg")
     @stobj.add_pv('hdisk3', 'mymirror')
     @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"foovg")
@@ -136,7 +136,7 @@ class TestAIXStorage_VG < Test::Unit::TestCase
     assert_equal('system error:0516-306 extendvg: Unable to find volume group foovg in the Device', exception.message[0,79])
   end
 
-  def test_13_delete_pv
+  def test_11_delete_pv
     @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"datavg")
     @stobj.delete_pv('hdisk2')
     @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"foovg")
@@ -158,21 +158,37 @@ class TestAIXStorage_LV < Test::Unit::TestCase
     system("mklv -y part1 datavg 20 2>/dev/null")
   end
 
-  def test_03_exists
+  def test_01_exists
     @stobj = AIXLVM::StObjLV.new(AIXLVM::System.new(),'hd1')
     assert_equal(true, @stobj.exist?)
     @stobj = AIXLVM::StObjLV.new(AIXLVM::System.new(),'hd100')
     assert_equal(false, @stobj.exist?)
   end
 
-  def test_02_get_nbpp
-    @stobj = AIXLVM::StObjLV.new(AIXLVM::System.new(),'part1')
-    assert_equal(20, @stobj.get_nbpp)
+  def test_02_get_vg
+    @stobj = AIXLVM::StObjLV.new(AIXLVM::System.new(),'hd1')
+    assert_equal('rootvg', @stobj.get_vg)
+    @stobj = AIXLVM::StObjLV.new(AIXLVM::System.new(),'hd100')
+    assert_equal(nil, @stobj.get_vg)
+  end
+
+  def test_03_get_nbpp
+    @stobj = AIXLVM::StObjLV.new(AIXLVM::System.new(),'hd2')
+    assert_equal(76, @stobj.get_nbpp)
+    assert_equal(32, @stobj.get_ppsize)
+    @stobj = AIXLVM::StObjLV.new(AIXLVM::System.new(),'hd100')
+    assert_equal(nil, @stobj.get_nbpp)
+    assert_equal(nil, @stobj.get_ppsize)
+  end
+
+  def test_04_get_mount
+    @stobj = AIXLVM::StObjLV.new(AIXLVM::System.new(),'hd1')
+    assert_equal("/home", @stobj.get_mount)
     @stobj = AIXLVM::StObjLV.new(AIXLVM::System.new(),'part20')
     assert_equal(nil, @stobj.get_nbpp)
   end
 
-  def test_04_create
+  def test_05_create
     @stobj = AIXLVM::StObjLV.new(AIXLVM::System.new(),'part2')
     @stobj.create('datavg',10)
     @stobj = AIXLVM::StObjLV.new(AIXLVM::System.new(),'part3')
@@ -182,7 +198,7 @@ class TestAIXStorage_LV < Test::Unit::TestCase
     assert_equal('system error:0516-306 getlvodm: Unable to find volume group foovg in the Device', exception.message[0,79])
   end
 
-  def test_05_increase
+  def test_06_increase
     @stobj = AIXLVM::StObjLV.new(AIXLVM::System.new(),'part1')
     @stobj.increase(10)
     assert_equal(30, @stobj.get_nbpp)

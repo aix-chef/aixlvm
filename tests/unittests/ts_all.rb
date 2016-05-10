@@ -10,3 +10,4 @@ require_relative 'tc_aix_storage_objects.rb' if (/aix/ =~ RUBY_PLATFORM) !=nil
 require_relative 'tc_storage_objects.rb'
 require_relative 'tc_objects_vg'
 require_relative 'tc_objects_lv'
+require_relative 'tc_objects_fs'
