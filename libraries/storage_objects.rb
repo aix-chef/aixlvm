@@ -212,7 +212,7 @@ module AIXLVM
         return nil
       end
     end
-    
+
     def get_nbpp
       read
       if @descript!=nil
@@ -221,18 +221,23 @@ module AIXLVM
         return nil
       end
     end
-    
+
     def get_mount
       read
       if @descript!=nil
-        return @descript[/MOUNT POINT:\s*([^\s]*)\s/,1]
+        val=@descript[/MOUNT POINT:\s*([^\s]*)\s/,1]
+        if val=='N/A'
+          return ''
+        else
+          return val
+        end
       else
         return nil
       end
     end
 
     def create(vgname,nb_pp)
-      out=@system.run("mklv -y %s %s %d" % [@name,vgname,nb_pp])
+      out=@system.run("mklv -t jfs2 -y %s %s %d" % [@name,vgname,nb_pp])
       if out!=nil
         return out
       else
@@ -267,16 +272,35 @@ module AIXLVM
       read
       return @descript!=nil
     end
-    
+
     def get_size
       read
       if @descript!=nil
         lines=@descript.split("\n")
         vals=lines[1].split(":")
-        return vals[5].to_f/2
+        return vals[5].to_f/2048
       else
         return nil
       end
     end
+
+    def create(lvname)
+      out=@system.run("crfs -v jfs2 -d %s -m %s -A yes" % [lvname,@name])
+      if out!=nil
+        return out
+      else
+        raise AIXLVM::LVMException.new("system error:%s" % @system.last_error)
+      end
+    end
+
+    def modify(size)
+      out=@system.run("chfs -a size=%dM %s" % [size,@name])
+      if out!=nil
+        return out
+      else
+        raise AIXLVM::LVMException.new("system error:%s" % @system.last_error)
+      end
+    end
+
   end
 end

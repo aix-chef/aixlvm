@@ -150,7 +150,6 @@ end
 class TestAIXStorage_LV < Test::Unit::TestCase
   def setup
     print("\n")
-    print("\n")
     system("varyoffvg datavg 2>/dev/null")
     system("exportvg datavg 2>/dev/null")
     system("mkvg -y datavg -s 4 -f hdisk1 2>/dev/null")
@@ -210,4 +209,60 @@ class TestAIXStorage_LV < Test::Unit::TestCase
     assert_equal('system error:0516-306 getlvodm: Unable to find  part3 in the Device', exception.message[0,67])
   end
 
+end
+
+class TestAIXStorage_FS < Test::Unit::TestCase
+  def setup
+    print("\n")
+    system("varyoffvg datavg 2>/dev/null")
+    system("exportvg datavg 2>/dev/null")
+    system("mkvg -y datavg -s 4 -f hdisk1 2>/dev/null")
+    system("mklv -t jfs2 -y part1 datavg 256 2>/dev/null")
+    system("mklv -t jfs2 -y part2 datavg 256 2>/dev/null")
+    system("crfs -v jfs2 -d part1 -m /opt/data1 -A yes 2>/dev/null")
+    system("chfs -a size=64M /opt/data1 2>/dev/null")
+  end
+
+  def test_01_exists
+    @stobj = AIXLVM::StObjFS.new(AIXLVM::System.new(),'/opt/data1')
+    assert_equal(true, @stobj.exist?)
+    @stobj = AIXLVM::StObjFS.new(AIXLVM::System.new(),'/opt/data2')
+    assert_equal(false, @stobj.exist?)
+  end
+  
+  def test_02_get_size
+    @stobj = AIXLVM::StObjFS.new(AIXLVM::System.new(),'/opt/data1')
+    assert_equal(64, @stobj.get_size)
+    @stobj = AIXLVM::StObjFS.new(AIXLVM::System.new(),'/opt/data2')
+    assert_equal(nil, @stobj.get_size)
+  end
+  
+  def test_03_create
+    @stobj = AIXLVM::StObjFS.new(AIXLVM::System.new(),'/opt/data2')
+    @stobj.create('part2')
+    assert_equal(true, @stobj.exist?)
+
+    @stobj = AIXLVM::StObjFS.new(AIXLVM::System.new(),'/opt/data3')
+    exception = assert_raise(AIXLVM::LVMException) {
+      @stobj.create('part1')
+    }
+    assert_equal('system error:crfs: lv /dev/part1 already being used for filesystem /opt/data1', exception.message[0,77])
+  end
+
+  def test_04_modify
+    @stobj = AIXLVM::StObjFS.new(AIXLVM::System.new(),'/opt/data1')
+    @stobj.modify(128)
+    assert_equal(128, @stobj.get_size)
+
+    @stobj = AIXLVM::StObjFS.new(AIXLVM::System.new(),'/opt/data1')
+    @stobj.modify(32)
+    assert_equal(32, @stobj.get_size)
+
+    @stobj = AIXLVM::StObjFS.new(AIXLVM::System.new(),'/opt/data1')
+    exception = assert_raise(AIXLVM::LVMException) {
+      @stobj.modify(8192)
+    }
+    assert_equal('system error:0516-787 extendlv: Maximum allocation for logical volume part1', exception.message[0,75])
+  end
+  
 end

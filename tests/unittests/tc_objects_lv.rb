@@ -19,10 +19,13 @@ class TestLogicalVolume < Test::Unit::TestCase
     @logicalvol.group='datavg'
     @logicalvol.physical_volumes=[]
     @logicalvol.size=1024
+
     @logicalvol.copies=1
     @logicalvol.stripe='n'
     @logicalvol.scheduling_policy='parallel'
   end
+
+  ############################### BASIC TESTS ############################### 
 
   def test_01_vg_dont_exists()
     @mock.add_retrun('lsvg datavg', nil)
@@ -82,16 +85,7 @@ class TestLogicalVolume < Test::Unit::TestCase
     assert_equal('',@mock.residual())
   end
 
-  def test_04_illegal_number_of_copies()
-    @logicalvol.copies=4
-    exception = assert_raise(AIXLVM::LVMException) {
-      @logicalvol.check_to_change
-    }
-    assert_equal('Illegal number of copies!', exception.message)
-    assert_equal('',@mock.residual())
-  end
-
-  def test_05_insufficient_space_available_not_exits()
+  def test_04_insufficient_space_available_not_exits()
     @mock.add_retrun('lsvg datavg', 'VOLUME GROUP:       datavg                   VG IDENTIFIER:  00f9fd4b00004c00000001547adb7ade
     VG STATE:           active                   PP SIZE:        4 megabyte(s)
     VG PERMISSION:      read/write               TOTAL PPs:      3018 (12072 megabytes)
@@ -116,7 +110,7 @@ class TestLogicalVolume < Test::Unit::TestCase
     assert_equal('',@mock.residual())
   end
 
-  def test_06_insufficient_space_available_exits()
+  def test_05_insufficient_space_available_exits()
     @mock.add_retrun('lsvg datavg', 'VOLUME GROUP:       datavg                   VG IDENTIFIER:  00f9fd4b00004c00000001547adb7ade
     VG STATE:           active                   PP SIZE:        4 megabyte(s)
     VG PERMISSION:      read/write               TOTAL PPs:      3018 (12072 megabytes)
@@ -156,7 +150,7 @@ class TestLogicalVolume < Test::Unit::TestCase
     assert_equal('',@mock.residual())
   end
 
-  def test_07_lv_not_exist()
+  def test_06_lv_not_exist()
     @mock.add_retrun('lsvg datavg', 'VOLUME GROUP:       datavg                   VG IDENTIFIER:  00f9fd4b00004c00000001547adb7ade
     VG STATE:           active                   PP SIZE:        4 megabyte(s)
     VG PERMISSION:      read/write               TOTAL PPs:      3018 (12072 megabytes)
@@ -174,13 +168,13 @@ class TestLogicalVolume < Test::Unit::TestCase
     DISK BLOCK SIZE:    512                      CRITICAL VG:    no
 ')
     @mock.add_retrun('lslv part1', nil)
-    @mock.add_retrun("mklv -y part1 datavg 256", '')
+    @mock.add_retrun("mklv -t jfs2 -y part1 datavg 256", '')
     assert_equal(true, @logicalvol.check_to_change)
     assert_equal(["Create logical volume 'part1' on volume groupe 'datavg'"], @logicalvol.create())
     assert_equal('',@mock.residual())
   end
 
-  def test_08_lv_exist_no_change()
+  def test_07_lv_exist_no_change()
     @mock.add_retrun('lsvg datavg', 'VOLUME GROUP:       datavg                   VG IDENTIFIER:  00f9fd4b00004c00000001547adb7ade
     VG STATE:           active                   PP SIZE:        4 megabyte(s)
     VG PERMISSION:      read/write               TOTAL PPs:      3018 (12072 megabytes)
@@ -219,7 +213,7 @@ class TestLogicalVolume < Test::Unit::TestCase
     assert_equal('',@mock.residual())
   end
 
-  def test_09_lv_exist_with_size_increase()
+  def test_08_lv_exist_with_size_increase()
     @mock.add_retrun('lsvg datavg', 'VOLUME GROUP:       datavg                   VG IDENTIFIER:  00f9fd4b00004c00000001547adb7ade
     VG STATE:           active                   PP SIZE:        4 megabyte(s)
     VG PERMISSION:      read/write               TOTAL PPs:      3018 (12072 megabytes)
@@ -259,9 +253,20 @@ class TestLogicalVolume < Test::Unit::TestCase
     assert_equal('',@mock.residual())
   end
 
-  def test_10_lv_exist_with_size_reduce()
+  def test_09_lv_exist_with_size_reduce()
     print("??? how to reduce ???\n")
     return
+  end
+
+  ############################### ADVANCED TESTS ############################### 
+
+  def test_10_illegal_number_of_copies()
+    @logicalvol.copies=4
+    exception = assert_raise(AIXLVM::LVMException) {
+      @logicalvol.check_to_change
+    }
+    assert_equal('Illegal number of copies!', exception.message)
+    assert_equal('',@mock.residual())
   end
 
 end

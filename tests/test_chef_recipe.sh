@@ -34,6 +34,7 @@ echo "{\n\"run_list\": [ \"recipe[aixtest]\" ]\n}\n" > $current_dir/firstrun.jso
 echo "--------- Initial LVM for test -----------"
 varyoffvg datavg 2>/dev/null
 exportvg datavg 2>/dev/null
+rm -rf /lvm 2>/dev/null
 disks=$(echo $(lspv | grep 'None' | sed 's|\(hdisk[0-9]*\).*|\1|g'))
 if [ "$disks" != "hdisk1 hdisk2 hdisk3 hdisk4" ]
 then
@@ -53,11 +54,9 @@ fi
 echo "--------- Check LVM ----------------------"
 result=0
 disk_datavg=$(echo $(lspv | grep 'datavg' | sed 's|\(hdisk[0-9]*\).*|\1|g'))
-hot_spare_datavg=$(echo "$(lsvg datavg | grep 'HOT SPARE:' | sed 's|HOT SPARE:[ \t]*\(.*\)[ \t]BB.*|\1|g')" | tr -d '[[:space:]]')
 lv_datavg=$(echo $(lspv | grep 'datavg' | sed 's|\(hdisk[0-9]*\).*|\1|g'))
-sizes_part1=$(lsvg -l datavg | grep 'part1' | sed 's|.*jfs[ \t]*\([0-9]*\)[ \t]*\([0-9]*\)[ \t]*\([0-9]*\).*|\1 \2 \3|g')
-sizes_part2=$(lsvg -l datavg | grep 'part2' | sed 's|.*jfs[ \t]*\([0-9]*\)[ \t]*\([0-9]*\)[ \t]*\([0-9]*\).*|\1 \2 \3|g')
-pv_mirrorpools=$(lspv -P | grep datavg | sed 's|datavg|=|g' | sed 's|hdisk|+hdisk|g'  | tr -d '[[:space:]]')
+sizes_part1=$(lsvg -l datavg | grep 'part1' | sed 's|.*jfs2[ \t]*\([0-9]*\)[ \t]*\([0-9]*\)[ \t]*\([0-9]*\).*|\1 \2 \3|g')
+sizes_part2=$(lsvg -l datavg | grep 'part2' | sed 's|.*jfs2[ \t]*\([0-9]*\)[ \t]*\([0-9]*\)[ \t]*\([0-9]*\).*|\1 \2 \3|g')
 if [ "$disk_datavg" != "hdisk1 hdisk2 hdisk3" ]
 then
 	echo "disk=$disk_datavg"
@@ -74,16 +73,6 @@ if [ "$sizes_part2" != "256 256 1" ]
 then
 	echo "sizes part2=$sizes_part2"
 	echo "*** Bad sizes (LPs,PPs,PVs) for LV part2 ****"
-	result=1
-fi
-if [ "$hot_spare_datavg" != "yes(onetoone)" ]
-then
-	echo "hot spare of datavg='$hot_spare_datavg'"
-	result=1
-fi
-if [ "$pv_mirrorpools" != "+hdisk1=mymirror+hdisk2=mymirror+hdisk3=othermirror" ]
-then
-	echo "mirror pools='$pv_mirrorpools'"
 	result=1
 fi
 

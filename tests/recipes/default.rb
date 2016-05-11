@@ -7,8 +7,6 @@
  
 aixlvm_volume_group 'datavg' do
     physical_volumes          ['hdisk1', 'hdisk2']
-    use_as_hot_spare          'n'
-    mirror_pool_name          "mymirror"
     action :create
 end
 
@@ -20,7 +18,6 @@ end
 aixlvm_logical_volume 'part1' do
     group 'datavg'
     size   512
-    scheduling_policy 'sequential'
     action :create
 end
 
@@ -34,42 +31,40 @@ end
 aixlvm_logical_volume 'part3' do
     group 'foovg'
     size   2048
-    copies 3
-    scheduling_policy 'parallel_write_round_robin_read'
     action :create
 end
 
-aixlvm_filesystem 'dir1' do
+aixlvm_filesystem '/lvm/folder1' do
     logical 'part1'
-    size   '1024M'
-    mount_point '/lvm/folder1'
+    size   '256M'
     action :create
 end
 
-aixlvm_filesystem 'dir2' do
+aixlvm_filesystem '/lvm/folder2' do
     logical 'part2'
     size   '1024'
-    mount_point '/lvm/folder2'
     action :create
 end
 
-aixlvm_filesystem 'dir3' do
+aixlvm_filesystem '/lvm/folder3' do
     logical 'part2'
-    size   '2G'
-    mount_point '/lvm/folder3'
+    size   '128M'
     action :create
 end
 
 aixlvm_volume_group 'datavg' do
     physical_volumes          ['hdisk1', 'hdisk2', 'hdisk3']
-    use_as_hot_spare          'y'
-    mirror_pool_name          "othermirror"
     action :create
 end
 
 aixlvm_logical_volume 'part1' do
     group 'datavg'
     size   2048
-    scheduling_policy 'sequential'
+    action :create
+end
+
+aixlvm_filesystem '/lvm/folder2' do
+    logical 'part2'
+    size   '512'
     action :create
 end

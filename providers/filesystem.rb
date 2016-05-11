@@ -11,9 +11,19 @@ def whyrun_supported?
 end
 
 def load_current_resource
-  return
+  @filesystem = AIXLVM::FileSystem.new(@new_resource.name,AIXLVM::System.new())
+  @filesystem.logical_volume=@new_resource.logical
+  @filesystem.size=@new_resource.size
 end
 
 action :create do
-  Chef::Log.fatal('filesystem :create => no implemented!')
+  begin
+    if @filesystem.check_to_change()
+      converge_by(@filesystem.create().join(" | ")) do
+
+      end
+    end
+  rescue AIXLVM::LVMException => e
+    Chef::Log.fatal(e.message)
+  end
 end

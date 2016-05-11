@@ -358,20 +358,38 @@ EACH LP COPY ON A SEPARATE PV ?: yes
 Serialize IO ?:     NO
 INFINITE RETRY:     no
 ')
+    @mock.add_retrun('lslv hd1', 'LOGICAL VOLUME:     hd1                    VOLUME GROUP:   rootvg
+LV IDENTIFIER:      00f9fd4b00004c0000000153e61e5d00.8 PERMISSION:     read/write
+VG STATE:           active/complete        LV STATE:       opened/syncd
+TYPE:               jfs2                   WRITE VERIFY:   off
+MAX LPs:            512                    PP SIZE:        4 megabyte(s)
+COPIES:             1                      SCHED POLICY:   parallel
+LPs:                1                      PPs:            12
+STALE PPs:          0                      BB POLICY:      relocatable
+INTER-POLICY:       minimum                RELOCATABLE:    yes
+INTRA-POLICY:       center                 UPPER BOUND:    32
+MOUNT POINT:        N/A                    LABEL:          None
+MIRROR WRITE CONSISTENCY: on/ACTIVE
+EACH LP COPY ON A SEPARATE PV ?: yes
+Serialize IO ?:     NO
+INFINITE RETRY:     no
+')
     @mock.add_retrun('lslv hd1', nil)
     assert_equal("/opt/data", @stobj.get_mount)
     @stobj = AIXLVM::StObjLV.new(@mock,'hd1')
-    assert_equal(nil, @stobj.get_nbpp)
+    assert_equal("", @stobj.get_mount)
+    @stobj = AIXLVM::StObjLV.new(@mock,'hd1')
+    assert_equal(nil, @stobj.get_mount)
   end
 
   def test_05_create
-    @mock.add_retrun("mklv -y hd1 datavg 10", '')
-    @mock.add_retrun("mklv -y hd1 datavg 20", nil)
+    @mock.add_retrun("mklv -t jfs2 -y hd1 datavg 10", '')
+    @mock.add_retrun("mklv -t jfs2 -y hd1 datavg 20", nil)
     @stobj.create('datavg',10)
     exception = assert_raise(AIXLVM::LVMException) {
       @stobj.create('datavg', 20)
     }
-    assert_equal('system error:mklv -y hd1 datavg 20', exception.message)
+    assert_equal('system error:mklv -t jfs2 -y hd1 datavg 20', exception.message)
     assert_equal('',@mock.residual())
   end
 
@@ -409,9 +427,31 @@ class TestStorage_FS < Test::Unit::TestCase
     @mock.add_retrun("lsfs -c /opt/data","#MountPoint:Device:Vfs:Nodename:Type:Size:Options:AutoMount:Acct
 /opt/data:part1:jfs2:::2031616:rw:yes:no")
     @mock.add_retrun("lsfs -c /opt/data",nil)
-    assert_equal(1015808, @stobj.get_size)
+    assert_equal(992, @stobj.get_size)
     @stobj = AIXLVM::StObjFS.new(@mock,'/opt/data')
     assert_equal(nil, @stobj.get_size)
+  end
+  
+  def test_03_create
+    @mock.add_retrun("crfs -v jfs2 -d part1 -m /opt/data -A yes", '')
+    @mock.add_retrun("crfs -v jfs2 -d part1 -m /opt/data -A yes", nil)
+    @stobj.create('part1')
+    exception = assert_raise(AIXLVM::LVMException) {
+      @stobj.create('part1')
+    }
+    assert_equal('system error:crfs -v jfs2 -d part1 -m /opt/data -A yes', exception.message)
+    assert_equal('',@mock.residual())
+  end
+
+  def test_04_modify
+    @mock.add_retrun("chfs -a size=250M /opt/data", '')
+    @mock.add_retrun("chfs -a size=250M /opt/data", nil)
+    @stobj.modify(250)
+    exception = assert_raise(AIXLVM::LVMException) {
+      @stobj.modify(250)
+    }
+    assert_equal('system error:chfs -a size=250M /opt/data', exception.message)
+    assert_equal('',@mock.residual())
   end
   
 end
