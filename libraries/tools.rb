@@ -25,7 +25,7 @@ module AIXLVM
   class System < BaseSystem
     def run(cmd)
       begin
-        stdout, @last_error, status = Open3.capture3(*cmd)
+        stdout, @last_error, status = Open3.capture3({'LANG' => 'C'},*cmd)
         if status.success?
           return stdout.slice!(0..-(1 + $/.size))
         else

@@ -19,10 +19,7 @@ class TestLogicalVolume < Test::Unit::TestCase
     @logicalvol.group='datavg'
     @logicalvol.physical_volumes=[]
     @logicalvol.size=1024
-
     @logicalvol.copies=1
-    @logicalvol.stripe='n'
-    @logicalvol.scheduling_policy='parallel'
   end
 
   ############################### BASIC TESTS ############################### 
@@ -168,7 +165,7 @@ class TestLogicalVolume < Test::Unit::TestCase
     DISK BLOCK SIZE:    512                      CRITICAL VG:    no
 ')
     @mock.add_retrun('lslv part1', nil)
-    @mock.add_retrun("mklv -t jfs2 -y part1 datavg 256", '')
+    @mock.add_retrun("mklv -c 1 -t jfs2 -y part1 datavg 256", '')
     assert_equal(true, @logicalvol.check_to_change)
     assert_equal(["Create logical volume 'part1' on volume groupe 'datavg'"], @logicalvol.create())
     assert_equal('',@mock.residual())
@@ -266,6 +263,48 @@ class TestLogicalVolume < Test::Unit::TestCase
       @logicalvol.check_to_change
     }
     assert_equal('Illegal number of copies!', exception.message)
+    
+    @mock.add_retrun('lsvg datavg', 'VOLUME GROUP:       datavg                   VG IDENTIFIER:  00f9fd4b00004c00000001547adb7ade
+    VG STATE:           active                   PP SIZE:        4 megabyte(s)
+    VG PERMISSION:      read/write               TOTAL PPs:      3018 (12072 megabytes)
+    MAX LVs:            256                      FREE PPs:       2250 (9000 megabytes)
+    LVs:                2                        USED PPs:       768 (3072 megabytes)
+    OPEN LVs:           0                        QUORUM:         2 (Enabled)
+    TOTAL PVs:          2                        VG DESCRIPTORS: 3
+    STALE PVs:          0                        STALE PPs:      0
+    ACTIVE PVs:         2                        AUTO ON:        yes
+    MAX PPs per VG:     32768                    MAX PVs:        1024
+    LTG size (Dynamic): 512 kilobyte(s)          AUTO SYNC:      no
+    HOT SPARE:          no                       BB POLICY:      relocatable
+    MIRROR POOL STRICT: off
+    PV RESTRICTION:     none                     INFINITE RETRY: no
+    DISK BLOCK SIZE:    512                      CRITICAL VG:    no
+')
+    @logicalvol.copies=3
+    exception = assert_raise(AIXLVM::LVMException) {
+      @logicalvol.check_to_change
+    }
+    assert_equal('Illegal number of copies!', exception.message)
+
+    @mock.add_retrun('lsvg datavg', 'VOLUME GROUP:       datavg                   VG IDENTIFIER:  00f9fd4b00004c00000001547adb7ade
+    VG STATE:           active                   PP SIZE:        4 megabyte(s)
+    VG PERMISSION:      read/write               TOTAL PPs:      3018 (12072 megabytes)
+    MAX LVs:            256                      FREE PPs:       2250 (9000 megabytes)
+    LVs:                2                        USED PPs:       768 (3072 megabytes)
+    OPEN LVs:           0                        QUORUM:         2 (Enabled)
+    TOTAL PVs:          3                        VG DESCRIPTORS: 3
+    STALE PVs:          0                        STALE PPs:      0
+    ACTIVE PVs:         3                        AUTO ON:        yes
+    MAX PPs per VG:     32768                    MAX PVs:        1024
+    LTG size (Dynamic): 512 kilobyte(s)          AUTO SYNC:      no
+    HOT SPARE:          no                       BB POLICY:      relocatable
+    MIRROR POOL STRICT: off
+    PV RESTRICTION:     none                     INFINITE RETRY: no
+    DISK BLOCK SIZE:    512                      CRITICAL VG:    no
+')
+    @mock.add_retrun('lslv part1', nil)
+    assert_equal(true, @logicalvol.check_to_change)
+    
     assert_equal('',@mock.residual())
   end
 

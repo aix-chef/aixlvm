@@ -14,8 +14,6 @@ module AIXLVM
     attr_accessor :physical_volumes
     attr_accessor :size
     attr_accessor :copies  # [1, 2, 3]
-    attr_accessor :stripe
-    attr_accessor :scheduling_policy  # ['parallel', 'sequential', 'parallel_write_sequential_read', 'parallel_write_round_robin_read']
     def initialize(name,system)
       @name=name
       @system=system
@@ -23,8 +21,6 @@ module AIXLVM
       @physical_volumes=[]
       @size=0
       @copies=1
-      @stripe='n'
-      @scheduling_policy='parallel'
 
       @nb_pp=0
       @diff_pp=0
@@ -39,6 +35,9 @@ module AIXLVM
       vg_obj=StObjVG.new(@system,@group)
       if not vg_obj.exist?
         raise AIXLVM::LVMException.new('volume group "%s" does not exist!' % @group)
+      end
+      if vg_obj.get_nbpv<@copies
+        raise AIXLVM::LVMException.new('Illegal number of copies!')
       end
       ppsize=vg_obj.get_ppsize
       @nb_pp=@size.to_f/ppsize.to_f
@@ -75,7 +74,7 @@ module AIXLVM
       if @changed
         lv_obj=StObjLV.new(@system,@name)
         if @diff_pp==0
-          lv_obj.create(@group,@nb_pp)
+          lv_obj.create(@group,@nb_pp,@copies)
           ret.push("Create logical volume '%s' on volume groupe '%s'" % [@name,@group])
         else
           if @diff_pp>0

@@ -69,7 +69,7 @@ then
 	echo "*** Bad sizes (LPs,PPs,PVs) for LV part1 ****"
 	result=1
 fi
-if [ "$sizes_part2" != "256 256 1" ]
+if [ "$sizes_part2" != "64 128 2" ]
 then
 	echo "sizes part2=$sizes_part2"
 	echo "*** Bad sizes (LPs,PPs,PVs) for LV part2 ****"

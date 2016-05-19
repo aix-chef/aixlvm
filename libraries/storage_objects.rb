@@ -129,6 +129,15 @@ module AIXLVM
         return nil
       end
     end
+    
+    def get_nbpv
+      read
+      if @descript!=nil
+        return @descript[/ACTIVE PVs:\s*(.*)\s*/,1].to_i
+      else
+        return nil
+      end
+    end
 
     def create(pvname,mirrorpool)
       if mirrorpool==nil
@@ -236,8 +245,17 @@ module AIXLVM
       end
     end
 
-    def create(vgname,nb_pp)
-      out=@system.run("mklv -t jfs2 -y %s %s %d" % [@name,vgname,nb_pp])
+    def get_copies
+      read
+      if @descript!=nil
+        return @descript[/COPIES:\s*(.*)\s*/,1].to_i
+      else
+        return nil
+      end
+    end
+
+    def create(vgname,nb_pp, copies)
+      out=@system.run("mklv -c %d -t jfs2 -y %s %s %d" % [copies,@name,vgname,nb_pp])
       if out!=nil
         return out
       else

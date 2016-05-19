@@ -14,7 +14,6 @@ def load_current_resource
   @volgroup = AIXLVM::VolumeGroup.new(@new_resource.name,AIXLVM::System.new())
   @volgroup.physical_volumes=@new_resource.physical_volumes
   @volgroup.use_as_hot_spare=@new_resource.use_as_hot_spare
-  @volgroup.mirror_pool_name=@new_resource.mirror_pool_name
 end
 
 action :create do

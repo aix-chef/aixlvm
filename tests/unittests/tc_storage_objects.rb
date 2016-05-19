@@ -213,7 +213,31 @@ hdisk3            datavg            mymirror')
     assert_equal('',@mock.residual())
   end
 
-  def test_08_create
+  def test_08_get_nbpv
+    @mock.add_retrun('lsvg datavg', 'VOLUME GROUP:       datavg                   VG IDENTIFIER:  00f9fd4b00004c00000001547adb7ade
+    VG STATE:           active                   PP SIZE:        4 megabyte(s)
+    VG PERMISSION:      read/write               TOTAL PPs:      3018 (12072 megabytes)
+    MAX LVs:            256                      FREE PPs:       2250 (9000 megabytes)
+    LVs:                2                        USED PPs:       768 (3072 megabytes)
+    OPEN LVs:           0                        QUORUM:         2 (Enabled)
+    TOTAL PVs:          3                        VG DESCRIPTORS: 3
+    STALE PVs:          0                        STALE PPs:      0
+    ACTIVE PVs:         3                        AUTO ON:        yes
+    MAX PPs per VG:     32768                    MAX PVs:        1024
+    LTG size (Dynamic): 512 kilobyte(s)          AUTO SYNC:      no
+    HOT SPARE:          no                       BB POLICY:      relocatable
+    MIRROR POOL STRICT: off
+    PV RESTRICTION:     none                     INFINITE RETRY: no
+    DISK BLOCK SIZE:    512                      CRITICAL VG:    no
+')
+    @mock.add_retrun('lsvg datavg', nil)
+    assert_equal(3, @stobj.get_nbpv)
+    @stobj = AIXLVM::StObjVG.new(@mock,"datavg")
+    assert_equal(nil, @stobj.get_nbpv)
+    assert_equal('',@mock.residual())
+  end
+  
+  def test_09_create
     @mock.add_retrun("mkvg -y datavg -S -f hdisk1", '')
     @mock.add_retrun("mkvg -y datavg -S -p mirrorpool -f hdisk1", '')
     @mock.add_retrun("mkvg -y datavg -S -f hdisk2", nil)
@@ -226,7 +250,7 @@ hdisk3            datavg            mymirror')
     assert_equal('',@mock.residual())
   end
 
-  def test_09_modify
+  def test_10_modify
     @mock.add_retrun("chvg -h y datavg", '')
     @mock.add_retrun("chvg -h n datavg", nil)
     @stobj.modify('y')
@@ -237,7 +261,7 @@ hdisk3            datavg            mymirror')
     assert_equal('',@mock.residual())
   end
 
-  def test_10_add_pv
+  def test_11_add_pv
     @mock.add_retrun("extendvg -f datavg hdisk2", '')
     @mock.add_retrun("extendvg -p mypool -f datavg hdisk2", '')
     @mock.add_retrun("extendvg -f datavg hdisk2", nil)
@@ -250,7 +274,7 @@ hdisk3            datavg            mymirror')
     assert_equal('',@mock.residual())
   end
 
-  def test_11_delete_pv
+  def test_12_delete_pv
     @mock.add_retrun("reducevg -d datavg hdisk3", '')
     @mock.add_retrun("reducevg -d datavg hdisk3", nil)
     @stobj.delete_pv('hdisk3')
@@ -382,18 +406,63 @@ INFINITE RETRY:     no
     assert_equal(nil, @stobj.get_mount)
   end
 
-  def test_05_create
-    @mock.add_retrun("mklv -t jfs2 -y hd1 datavg 10", '')
-    @mock.add_retrun("mklv -t jfs2 -y hd1 datavg 20", nil)
-    @stobj.create('datavg',10)
+  def test_05_get_coipes
+    @mock.add_retrun('lslv hd1', 'LOGICAL VOLUME:     hd1                    VOLUME GROUP:   rootvg
+LV IDENTIFIER:      00f9fd4b00004c0000000153e61e5d00.8 PERMISSION:     read/write
+VG STATE:           active/complete        LV STATE:       opened/syncd
+TYPE:               jfs2                   WRITE VERIFY:   off
+MAX LPs:            512                    PP SIZE:        4 megabyte(s)
+COPIES:             1                      SCHED POLICY:   parallel
+LPs:                1                      PPs:            12
+STALE PPs:          0                      BB POLICY:      relocatable
+INTER-POLICY:       minimum                RELOCATABLE:    yes
+INTRA-POLICY:       center                 UPPER BOUND:    32
+MOUNT POINT:        /opt/data              LABEL:          /opt/data
+MIRROR WRITE CONSISTENCY: on/ACTIVE
+EACH LP COPY ON A SEPARATE PV ?: yes
+Serialize IO ?:     NO
+INFINITE RETRY:     no
+')
+    @mock.add_retrun('lslv part1', 'LOGICAL VOLUME:     part1                  VOLUME GROUP:   datavg
+    LV IDENTIFIER:      00f9fd4b00004c0000000154c85198be.1 PERMISSION:     read/write
+    VG STATE:           active/complete        LV STATE:       closed/syncd
+    TYPE:               jfs2                   WRITE VERIFY:   off
+    MAX LPs:            512                    PP SIZE:        4 megabyte(s)
+    COPIES:             2                      SCHED POLICY:   parallel
+    LPs:                10                     PPs:            20
+    STALE PPs:          0                      BB POLICY:      relocatable
+    INTER-POLICY:       minimum                RELOCATABLE:    yes
+    INTRA-POLICY:       middle                 UPPER BOUND:    1024
+    MOUNT POINT:        N/A                    LABEL:          None
+    MIRROR WRITE CONSISTENCY: on/ACTIVE                              
+    EACH LP COPY ON A SEPARATE PV ?: yes                                    
+    Serialize IO ?:     NO                                     
+    INFINITE RETRY:     no                                     
+    DEVICESUBTYPE:      DS_LVZ                                        
+    COPY 1 MIRROR POOL: None                                   
+    COPY 2 MIRROR POOL: None                                   
+    COPY 3 MIRROR POOL: None                                   
+')
+    @mock.add_retrun('lslv hd1', nil)
+    assert_equal(1, @stobj.get_copies)
+    @stobj = AIXLVM::StObjLV.new(@mock,'part1')
+    assert_equal(2, @stobj.get_copies)
+    @stobj = AIXLVM::StObjLV.new(@mock,'hd1')
+    assert_equal(nil, @stobj.get_copies)
+  end
+  
+  def test_06_create
+    @mock.add_retrun("mklv -c 2 -t jfs2 -y hd1 datavg 10", '')
+    @mock.add_retrun("mklv -c 1 -t jfs2 -y hd1 datavg 20", nil)
+    @stobj.create('datavg',10, 2)
     exception = assert_raise(AIXLVM::LVMException) {
-      @stobj.create('datavg', 20)
+      @stobj.create('datavg', 20, 1)
     }
-    assert_equal('system error:mklv -t jfs2 -y hd1 datavg 20', exception.message)
+    assert_equal('system error:mklv -c 1 -t jfs2 -y hd1 datavg 20', exception.message)
     assert_equal('',@mock.residual())
   end
 
-  def test_06_increase
+  def test_07_increase
     @mock.add_retrun("extendlv hd1 10", '')
     @mock.add_retrun("extendlv hd1 20", nil)
     @stobj.increase(10)

@@ -14,8 +14,7 @@ def load_current_resource
   @logicalvol = AIXLVM::LogicalVolume.new(@new_resource.name,AIXLVM::System.new())
   @logicalvol.group=@new_resource.group
   @logicalvol.size=@new_resource.size
-  @copies=@new_resource.copies
-  @scheduling_policy=@new_resource.scheduling_policy
+  @logicalvol.copies=@new_resource.copies
 end
 
 action :create do

@@ -105,6 +105,15 @@ class TestAIXStorage_VG < Test::Unit::TestCase
     @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"datavg")
     assert_equal('', @stobj.get_mirrorpool)
   end
+  
+  def test_08_get_nbpv
+    @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"foovg")
+    assert_equal(nil, @stobj.get_nbpv)
+    @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"rootvg")
+    assert_equal(1, @stobj.get_nbpv)
+    @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"datavg")
+    assert_equal(2, @stobj.get_nbpv)
+  end
 
   def test_08_create
     @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"othervg")
@@ -189,10 +198,10 @@ class TestAIXStorage_LV < Test::Unit::TestCase
 
   def test_05_create
     @stobj = AIXLVM::StObjLV.new(AIXLVM::System.new(),'part2')
-    @stobj.create('datavg',10)
+    @stobj.create('datavg',10, 2)
     @stobj = AIXLVM::StObjLV.new(AIXLVM::System.new(),'part3')
     exception = assert_raise(AIXLVM::LVMException) {
-      @stobj.create('foovg', 20)
+      @stobj.create('foovg', 20, 1)
     }
     assert_equal('system error:0516-306 getlvodm: Unable to find volume group foovg in the Device', exception.message[0,79])
   end
