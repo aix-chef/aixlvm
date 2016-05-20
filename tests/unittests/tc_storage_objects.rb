@@ -473,6 +473,19 @@ INFINITE RETRY:     no
     assert_equal('',@mock.residual())
   end
 
+  def test_08_copies
+    @mock.add_retrun("mklvcopy hd1 3", '')
+    @mock.add_retrun("rmlvcopy hd1 2", '')
+    @mock.add_retrun("mklvcopy hd1 1", nil)
+    @stobj.change_copies(3)
+    @stobj.change_copies(-2)
+    exception = assert_raise(AIXLVM::LVMException) {
+      @stobj.change_copies(1)
+    }
+    assert_equal('system error:mklvcopy hd1 1', exception.message)
+    assert_equal('',@mock.residual())
+  end
+  
 end
 
 class TestStorage_FS < Test::Unit::TestCase

@@ -24,6 +24,7 @@ module AIXLVM
 
       @nb_pp=0
       @diff_pp=0
+      @current_copies=1
       @changed=false
     end
 
@@ -58,9 +59,14 @@ module AIXLVM
             raise AIXLVM::LVMException.new('Insufficient space available!')
           end
         else
-          @changed=(@diff_pp!=0)
+          @current_copies=lv_obj.get_copies
+          if (@copies<@current_copies)
+            @copies=-@copies
+          end
+          @changed=(@diff_pp!=0) || (@copies!=@current_copies)
         end
       else
+        @diff_pp=-1
         free_pp_in_vg=vg_obj.get_freepp
         if free_pp_in_vg<@nb_pp
           raise AIXLVM::LVMException.new('Insufficient space available!')
@@ -73,7 +79,7 @@ module AIXLVM
       ret = []
       if @changed
         lv_obj=StObjLV.new(@system,@name)
-        if @diff_pp==0
+        if @diff_pp==-1
           lv_obj.create(@group,@nb_pp,@copies)
           ret.push("Create logical volume '%s' on volume groupe '%s'" % [@name,@group])
         else
@@ -81,6 +87,9 @@ module AIXLVM
             lv_obj.increase(@diff_pp)
           else
             #
+          end
+          if (@copies!=@current_copies)
+            lv_obj.change_copies(@copies)
           end
           ret.push("Modify logical volume '%s'" % @name)
         end

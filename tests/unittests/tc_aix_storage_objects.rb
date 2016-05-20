@@ -105,7 +105,7 @@ class TestAIXStorage_VG < Test::Unit::TestCase
     @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"datavg")
     assert_equal('', @stobj.get_mirrorpool)
   end
-  
+
   def test_08_get_nbpv
     @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"foovg")
     assert_equal(nil, @stobj.get_nbpv)
@@ -161,9 +161,9 @@ class TestAIXStorage_LV < Test::Unit::TestCase
     print("\n")
     system("varyoffvg datavg 2>/dev/null")
     system("exportvg datavg 2>/dev/null")
-    system("mkvg -y datavg -s 4 -f hdisk1 2>/dev/null")
+    system("mkvg -y datavg -S -s 4 -f hdisk1 2>/dev/null")
     system("extendvg -f datavg hdisk2 2>/dev/null")
-    system("mklv -y part1 datavg 20 2>/dev/null")
+    system("mklv -t jfs2 -y part1 datavg 20 2>/dev/null")
   end
 
   def test_01_exists
@@ -218,6 +218,20 @@ class TestAIXStorage_LV < Test::Unit::TestCase
     assert_equal('system error:0516-306 getlvodm: Unable to find  part3 in the Device', exception.message[0,67])
   end
 
+  def test_08_copies
+    @stobj = AIXLVM::StObjLV.new(AIXLVM::System.new(),'part1')
+    @stobj.change_copies(2)
+
+    @stobj = AIXLVM::StObjLV.new(AIXLVM::System.new(),'part1')
+    @stobj.change_copies(-1)
+    
+    @stobj = AIXLVM::StObjLV.new(AIXLVM::System.new(),'part3')
+    exception = assert_raise(AIXLVM::LVMException) {
+      @stobj.change_copies(2)
+    }
+    assert_equal('system error:0516-312 mklvcopy: Unable to find logical volume part3 in the Device', exception.message[0,81])
+  end
+
 end
 
 class TestAIXStorage_FS < Test::Unit::TestCase
@@ -238,14 +252,14 @@ class TestAIXStorage_FS < Test::Unit::TestCase
     @stobj = AIXLVM::StObjFS.new(AIXLVM::System.new(),'/opt/data2')
     assert_equal(false, @stobj.exist?)
   end
-  
+
   def test_02_get_size
     @stobj = AIXLVM::StObjFS.new(AIXLVM::System.new(),'/opt/data1')
     assert_equal(64, @stobj.get_size)
     @stobj = AIXLVM::StObjFS.new(AIXLVM::System.new(),'/opt/data2')
     assert_equal(nil, @stobj.get_size)
   end
-  
+
   def test_03_create
     @stobj = AIXLVM::StObjFS.new(AIXLVM::System.new(),'/opt/data2')
     @stobj.create('part2')
@@ -273,5 +287,5 @@ class TestAIXStorage_FS < Test::Unit::TestCase
     }
     assert_equal('system error:0516-787 extendlv: Maximum allocation for logical volume part1', exception.message[0,75])
   end
-  
+
 end

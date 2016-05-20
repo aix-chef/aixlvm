@@ -271,6 +271,19 @@ module AIXLVM
         raise AIXLVM::LVMException.new("system error:%s" % @system.last_error)
       end
     end
+    
+    def change_copies(copies)
+      if copies>0
+        out=@system.run("mklvcopy %s %d" % [@name,copies])
+      else
+        out=@system.run("rmlvcopy %s %d" % [@name,-1*copies])
+      end
+      if out!=nil
+        return out
+      else
+        raise AIXLVM::LVMException.new("system error:%s" % @system.last_error)
+      end
+    end
   end
 
   class StObjFS

@@ -308,4 +308,84 @@ class TestLogicalVolume < Test::Unit::TestCase
     assert_equal('',@mock.residual())
   end
 
+  def test_11_lv_exist_with_copies_increase()
+    @mock.add_retrun('lsvg datavg', 'VOLUME GROUP:       datavg                   VG IDENTIFIER:  00f9fd4b00004c00000001547adb7ade
+    VG STATE:           active                   PP SIZE:        4 megabyte(s)
+    VG PERMISSION:      read/write               TOTAL PPs:      3018 (12072 megabytes)
+    MAX LVs:            256                      FREE PPs:       2250 (9000 megabytes)
+    LVs:                2                        USED PPs:       768 (3072 megabytes)
+    OPEN LVs:           0                        QUORUM:         2 (Enabled)
+    TOTAL PVs:          3                        VG DESCRIPTORS: 3
+    STALE PVs:          0                        STALE PPs:      0
+    ACTIVE PVs:         3                        AUTO ON:        yes
+    MAX PPs per VG:     32768                    MAX PVs:        1024
+    LTG size (Dynamic): 512 kilobyte(s)          AUTO SYNC:      no
+    HOT SPARE:          no                       BB POLICY:      relocatable
+    MIRROR POOL STRICT: off
+    PV RESTRICTION:     none                     INFINITE RETRY: no
+    DISK BLOCK SIZE:    512                      CRITICAL VG:    no
+')
+    @mock.add_retrun('lslv part1', 'LOGICAL VOLUME:     hd1                    VOLUME GROUP:   datavg
+    LV IDENTIFIER:      00f9fd4b00004c0000000153e61e5d00.8 PERMISSION:     read/write
+    VG STATE:           active/complete        LV STATE:       opened/syncd
+    TYPE:               jfs2                   WRITE VERIFY:   off
+    MAX LPs:            512                    PP SIZE:        32 megabyte(s)
+    COPIES:             1                      SCHED POLICY:   parallel
+    LPs:                10                     PPs:            256
+    STALE PPs:          0                      BB POLICY:      relocatable
+    INTER-POLICY:       minimum                RELOCATABLE:    yes
+    INTRA-POLICY:       center                 UPPER BOUND:    32
+    MOUNT POINT:        /home                  LABEL:          /home
+    MIRROR WRITE CONSISTENCY: on/ACTIVE
+    EACH LP COPY ON A SEPARATE PV ?: yes
+    Serialize IO ?:     NO
+    INFINITE RETRY:     no
+    ')
+    @mock.add_retrun("mklvcopy part1 3", '')
+    @logicalvol.copies=3
+    assert_equal(true, @logicalvol.check_to_change)
+    assert_equal(["Modify logical volume 'part1'"], @logicalvol.create())
+    assert_equal('',@mock.residual())
+  end
+
+  def test_11_lv_exist_with_copies_reduce()
+    @mock.add_retrun('lsvg datavg', 'VOLUME GROUP:       datavg                   VG IDENTIFIER:  00f9fd4b00004c00000001547adb7ade
+    VG STATE:           active                   PP SIZE:        4 megabyte(s)
+    VG PERMISSION:      read/write               TOTAL PPs:      3018 (12072 megabytes)
+    MAX LVs:            256                      FREE PPs:       2250 (9000 megabytes)
+    LVs:                2                        USED PPs:       768 (3072 megabytes)
+    OPEN LVs:           0                        QUORUM:         2 (Enabled)
+    TOTAL PVs:          3                        VG DESCRIPTORS: 3
+    STALE PVs:          0                        STALE PPs:      0
+    ACTIVE PVs:         3                        AUTO ON:        yes
+    MAX PPs per VG:     32768                    MAX PVs:        1024
+    LTG size (Dynamic): 512 kilobyte(s)          AUTO SYNC:      no
+    HOT SPARE:          no                       BB POLICY:      relocatable
+    MIRROR POOL STRICT: off
+    PV RESTRICTION:     none                     INFINITE RETRY: no
+    DISK BLOCK SIZE:    512                      CRITICAL VG:    no
+')
+    @mock.add_retrun('lslv part1', 'LOGICAL VOLUME:     hd1                    VOLUME GROUP:   datavg
+    LV IDENTIFIER:      00f9fd4b00004c0000000153e61e5d00.8 PERMISSION:     read/write
+    VG STATE:           active/complete        LV STATE:       opened/syncd
+    TYPE:               jfs2                   WRITE VERIFY:   off
+    MAX LPs:            512                    PP SIZE:        32 megabyte(s)
+    COPIES:             3                      SCHED POLICY:   parallel
+    LPs:                10                     PPs:            256
+    STALE PPs:          0                      BB POLICY:      relocatable
+    INTER-POLICY:       minimum                RELOCATABLE:    yes
+    INTRA-POLICY:       center                 UPPER BOUND:    32
+    MOUNT POINT:        /home                  LABEL:          /home
+    MIRROR WRITE CONSISTENCY: on/ACTIVE
+    EACH LP COPY ON A SEPARATE PV ?: yes
+    Serialize IO ?:     NO
+    INFINITE RETRY:     no
+    ')
+    @mock.add_retrun("rmlvcopy part1 1", '')
+    @logicalvol.copies=1
+    assert_equal(true, @logicalvol.check_to_change)
+    assert_equal(["Modify logical volume 'part1'"], @logicalvol.create())
+    assert_equal('',@mock.residual())
+  end
+
 end
