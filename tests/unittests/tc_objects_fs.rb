@@ -20,7 +20,7 @@ class TestFileSystem < Test::Unit::TestCase
     @filesystem.size='250M'
   end
 
-  ############################### BASIC TESTS ############################### 
+  ############################### BASIC TESTS ###############################
 
   def test_01_lv_dont_exists
     @mock.add_retrun('lslv lv22', nil)
@@ -147,7 +147,7 @@ INFINITE RETRY:     no
     assert_equal('Insufficient space available!', exception.message)
     assert_equal('',@mock.residual())
   end
-  
+
   def test_06_fs_not_exist()
     @mock.add_retrun('lslv lv22', 'LOGICAL VOLUME:     lv22                    VOLUME GROUP:   rootvg
 LV IDENTIFIER:      00f9fd4b00004c0000000153e61e5d00.8 PERMISSION:     read/write
@@ -246,6 +246,61 @@ INFINITE RETRY:     no
     assert_equal(["Modify file system '/opt/data'"], @filesystem.create())
     assert_equal('',@mock.residual())
   end
-  
+
+  def test_10_fs_not_exist_mount_umount()
+    @mock.add_retrun("lsfs -c /opt/data",nil)
+    @filesystem.logical_volume=''
+    @filesystem.size=''
+    exception = assert_raise(AIXLVM::LVMException) {
+      @filesystem.check_to_mount(true)
+    }
+    assert_equal("Filesystem doesn't exist!", exception.message)
+    assert_equal('',@mock.residual())
+  end
+
+  def test_11_fs_exist_mount_fail()
+    @mock.add_retrun("lsfs -c /opt/data","#MountPoint:Device:Vfs:Nodename:Type:Size:Options:AutoMount:Acct
+/opt/data:lv22:jfs2:::1000:rw:yes:no")
+    @mock.add_retrun("mount | grep /opt/data", "         /dev/part2       /opt/data     jfs2   May 27 12:04 rw,log=/dev/loglv00")
+    @filesystem.logical_volume=''
+    @filesystem.size=''
+    assert_equal(false,@filesystem.check_to_mount(true))
+    assert_equal('',@mock.residual())
+  end
+
+  def test_12_fs_exist_umount_fail()
+    @mock.add_retrun("lsfs -c /opt/data","#MountPoint:Device:Vfs:Nodename:Type:Size:Options:AutoMount:Acct
+/opt/data:lv22:jfs2:::1000:rw:yes:no")
+    @mock.add_retrun("mount | grep /opt/data", nil)
+    @filesystem.logical_volume=''
+    @filesystem.size=''
+    assert_equal(false,@filesystem.check_to_mount(false))
+    assert_equal('',@mock.residual())
+  end
+
+  def test_13_fs_exist_mount_success()
+    @mock.add_retrun("lsfs -c /opt/data","#MountPoint:Device:Vfs:Nodename:Type:Size:Options:AutoMount:Acct
+/opt/data:lv22:jfs2:::1000:rw:yes:no")
+    @mock.add_retrun("mount | grep /opt/data", nil)
+    @mock.add_retrun("mount /opt/data", '')
+    @filesystem.logical_volume=''
+    @filesystem.size=''
+    assert_equal(true,@filesystem.check_to_mount(true))
+    assert_equal(["File system '/opt/data' mounted"], @filesystem.mount)
+    assert_equal('',@mock.residual())
+  end
+
+  def test_14_fs_exist_umount_success()
+    @mock.add_retrun("lsfs -c /opt/data","#MountPoint:Device:Vfs:Nodename:Type:Size:Options:AutoMount:Acct
+/opt/data:lv22:jfs2:::1000:rw:yes:no")
+    @mock.add_retrun("mount | grep /opt/data", "         /dev/part2       /opt/data     jfs2   May 27 12:04 rw,log=/dev/loglv00")
+    @mock.add_retrun("umount /opt/data", '')
+    @filesystem.logical_volume=''
+    @filesystem.size=''
+    assert_equal(true,@filesystem.check_to_mount(false))
+    assert_equal(["File system '/opt/data' umounted"], @filesystem.umount)
+    assert_equal('',@mock.residual())
+  end
+
 end
 

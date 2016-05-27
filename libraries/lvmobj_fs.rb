@@ -71,6 +71,34 @@ module AIXLVM
       end
       return ret
     end
+    
+    def check_to_mount(is_mount)
+      fs_obj=StObjFS.new(@system,@name)
+      if ! fs_obj.exist?
+        raise AIXLVM::LVMException.new("Filesystem doesn't exist!")
+      end
+      if is_mount
+        return !fs_obj.mounted?
+      else
+        return fs_obj.mounted?
+      end 
+    end
+
+    def mount
+      ret = []
+      fs_obj=StObjFS.new(@system,@name)
+      fs_obj.mount
+      ret.push("File system '%s' mounted" % [@name])
+      return ret
+    end
+    
+    def umount
+      ret = []
+      fs_obj=StObjFS.new(@system,@name)
+      fs_obj.umount
+      ret.push("File system '%s' umounted" % [@name])
+      return ret
+    end
 
   end
 

@@ -68,3 +68,7 @@ aixlvm_filesystem '/lvm/folder2' do
     size   '512'
     action :create
 end
+
+aixlvm_filesystem '/lvm/folder2' do
+    action :mount
+end

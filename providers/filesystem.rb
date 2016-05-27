@@ -27,3 +27,27 @@ action :create do
     Chef::Log.fatal(e.message)
   end
 end
+
+action :mount do
+  begin
+    if @filesystem.check_to_mount(true)
+      converge_by(@filesystem.mount().join(" | ")) do
+
+      end
+    end
+  rescue AIXLVM::LVMException => e
+    Chef::Log.fatal(e.message)
+  end
+end
+
+action :umount do
+  begin
+    if @filesystem.check_to_mount(false)
+      converge_by(@filesystem.umount().join(" | ")) do
+
+      end
+    end
+  rescue AIXLVM::LVMException => e
+    Chef::Log.fatal(e.message)
+  end
+end

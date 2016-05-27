@@ -224,7 +224,7 @@ class TestAIXStorage_LV < Test::Unit::TestCase
 
     @stobj = AIXLVM::StObjLV.new(AIXLVM::System.new(),'part1')
     @stobj.change_copies(-1)
-    
+
     @stobj = AIXLVM::StObjLV.new(AIXLVM::System.new(),'part3')
     exception = assert_raise(AIXLVM::LVMException) {
       @stobj.change_copies(2)
@@ -286,6 +286,15 @@ class TestAIXStorage_FS < Test::Unit::TestCase
       @stobj.modify(8192)
     }
     assert_equal('system error:0516-787 extendlv: Maximum allocation for logical volume part1', exception.message[0,75])
+  end
+
+  def test_05_mount_umount
+    @stobj = AIXLVM::StObjFS.new(AIXLVM::System.new(),'/opt/data1')
+    assert_equal(false, @stobj.mounted?)
+    @stobj.mount
+    assert_equal(true, @stobj.mounted?)
+    @stobj.umount
+    assert_equal(false, @stobj.mounted?)
   end
 
 end

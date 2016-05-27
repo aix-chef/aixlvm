@@ -236,7 +236,7 @@ hdisk3            datavg            mymirror')
     assert_equal(nil, @stobj.get_nbpv)
     assert_equal('',@mock.residual())
   end
-  
+
   def test_09_create
     @mock.add_retrun("mkvg -y datavg -S -f hdisk1", '')
     @mock.add_retrun("mkvg -y datavg -S -p mirrorpool -f hdisk1", '')
@@ -434,14 +434,14 @@ INFINITE RETRY:     no
     INTER-POLICY:       minimum                RELOCATABLE:    yes
     INTRA-POLICY:       middle                 UPPER BOUND:    1024
     MOUNT POINT:        N/A                    LABEL:          None
-    MIRROR WRITE CONSISTENCY: on/ACTIVE                              
-    EACH LP COPY ON A SEPARATE PV ?: yes                                    
-    Serialize IO ?:     NO                                     
-    INFINITE RETRY:     no                                     
-    DEVICESUBTYPE:      DS_LVZ                                        
-    COPY 1 MIRROR POOL: None                                   
-    COPY 2 MIRROR POOL: None                                   
-    COPY 3 MIRROR POOL: None                                   
+    MIRROR WRITE CONSISTENCY: on/ACTIVE
+    EACH LP COPY ON A SEPARATE PV ?: yes
+    Serialize IO ?:     NO
+    INFINITE RETRY:     no
+    DEVICESUBTYPE:      DS_LVZ
+    COPY 1 MIRROR POOL: None
+    COPY 2 MIRROR POOL: None
+    COPY 3 MIRROR POOL: None
 ')
     @mock.add_retrun('lslv hd1', nil)
     assert_equal(1, @stobj.get_copies)
@@ -450,7 +450,7 @@ INFINITE RETRY:     no
     @stobj = AIXLVM::StObjLV.new(@mock,'hd1')
     assert_equal(nil, @stobj.get_copies)
   end
-  
+
   def test_06_create
     @mock.add_retrun("mklv -c 2 -t jfs2 -y hd1 datavg 10", '')
     @mock.add_retrun("mklv -c 1 -t jfs2 -y hd1 datavg 20", nil)
@@ -485,7 +485,7 @@ INFINITE RETRY:     no
     assert_equal('system error:mklvcopy hd1 1', exception.message)
     assert_equal('',@mock.residual())
   end
-  
+
 end
 
 class TestStorage_FS < Test::Unit::TestCase
@@ -504,7 +504,7 @@ class TestStorage_FS < Test::Unit::TestCase
     assert_equal(false, @stobj.exist?)
     assert_equal('',@mock.residual())
   end
-  
+
   def test_02_get_size
     @mock.add_retrun("lsfs -c /opt/data","#MountPoint:Device:Vfs:Nodename:Type:Size:Options:AutoMount:Acct
 /opt/data:part1:jfs2:::2031616:rw:yes:no")
@@ -513,7 +513,7 @@ class TestStorage_FS < Test::Unit::TestCase
     @stobj = AIXLVM::StObjFS.new(@mock,'/opt/data')
     assert_equal(nil, @stobj.get_size)
   end
-  
+
   def test_03_create
     @mock.add_retrun("crfs -v jfs2 -d part1 -m /opt/data -A yes", '')
     @mock.add_retrun("crfs -v jfs2 -d part1 -m /opt/data -A yes", nil)
@@ -535,5 +535,18 @@ class TestStorage_FS < Test::Unit::TestCase
     assert_equal('system error:chfs -a size=250M /opt/data', exception.message)
     assert_equal('',@mock.residual())
   end
-  
+
+  def test_05_mount_umount
+    @mock.add_retrun("mount | grep /opt/data", nil)
+    @mock.add_retrun("mount /opt/data", "")
+    @mock.add_retrun("mount | grep /opt/data", "         /dev/part2       /opt/data     jfs2   May 27 12:04 rw,log=/dev/loglv00")
+    @mock.add_retrun("umount /opt/data", "")
+    @mock.add_retrun("mount | grep /opt/data", nil)
+    assert_equal(false, @stobj.mounted?)
+    @stobj.mount
+    assert_equal(true, @stobj.mounted?)
+    @stobj.umount
+    assert_equal(false, @stobj.mounted?)
+  end
+
 end

@@ -129,7 +129,7 @@ module AIXLVM
         return nil
       end
     end
-    
+
     def get_nbpv
       read
       if @descript!=nil
@@ -271,7 +271,7 @@ module AIXLVM
         raise AIXLVM::LVMException.new("system error:%s" % @system.last_error)
       end
     end
-    
+
     def change_copies(copies)
       if copies>0
         out=@system.run("mklvcopy %s %d" % [@name,copies])
@@ -326,6 +326,29 @@ module AIXLVM
 
     def modify(size)
       out=@system.run("chfs -a size=%dM %s" % [size,@name])
+      if out!=nil
+        return out
+      else
+        raise AIXLVM::LVMException.new("system error:%s" % @system.last_error)
+      end
+    end
+
+    def mounted?
+      out=@system.run("mount | grep %s" % [@name])
+      return out!=nil
+    end
+
+    def mount
+      out=@system.run("mount %s" % [@name])
+      if out!=nil
+        return out
+      else
+        raise AIXLVM::LVMException.new("system error:%s" % @system.last_error)
+      end
+    end
+
+    def umount
+      out=@system.run("umount %s" % [@name])
       if out!=nil
         return out
       else
