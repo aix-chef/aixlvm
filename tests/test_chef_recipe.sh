@@ -12,6 +12,19 @@ fi
 
 cd $current_dir
 
+echo "--------- Initial LVM for test -----------"
+umount /lvm/folder2 2>/dev/null
+varyoffvg datavg 2>/dev/null
+exportvg datavg 2>/dev/null
+rm -rf /lvm 2>/dev/null
+disks=$(echo $(lspv | grep 'None' | sed 's|\(hdisk[0-9]*\).*|\1|g'))
+if [ "$disks" != "hdisk1 hdisk2 hdisk3 hdisk4" ]
+then
+	lspv
+	echo "*** Bad initial disk status ****"
+	exit 1
+fi
+
 if [ "$run_option" != "NO-UNIT" ]
 then
 	echo "--------- Run unittest for LVM -----------"
@@ -31,23 +44,11 @@ echo "name             'aixtest'\ndepends   'aixlvm'\nsupports 'aix', '>= 6.1'\n
 echo "cookbook_path \"$current_dir\"" > $current_dir/solo.rb
 echo "{\n\"run_list\": [ \"recipe[aixtest]\" ]\n}\n" > $current_dir/firstrun.json
 
-echo "--------- Initial LVM for test -----------"
-varyoffvg datavg 2>/dev/null
-exportvg datavg 2>/dev/null
-rm -rf /lvm 2>/dev/null
-disks=$(echo $(lspv | grep 'None' | sed 's|\(hdisk[0-9]*\).*|\1|g'))
-if [ "$disks" != "hdisk1 hdisk2 hdisk3 hdisk4" ]
-then
-	lspv
-	echo "*** Bad initial disk status ****"
-	exit 1
-fi
-
 echo "--------- Run test cookbool --------------"
 chef-solo -c $current_dir/solo.rb -j $current_dir/firstrun.json
 if [ $? -ne 0 ]
 then
-	echo "*** Cookbool failure ****"
+	echo "*** Cookbook failure ****"
 	exit 1
 fi
 
