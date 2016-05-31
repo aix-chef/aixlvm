@@ -315,6 +315,28 @@ module AIXLVM
       end
     end
 
+    def get_format
+      read
+      if @descript!=nil
+        lines=@descript.split("\n")
+        vals=lines[1].split(":")
+        return vals[2]
+      else
+        return nil
+      end
+    end
+
+    def readonly?
+      read
+      if @descript!=nil
+        lines=@descript.split("\n")
+        vals=lines[1].split(":")
+        return !vals[6].include?('rw')
+      else
+        return nil
+      end
+    end
+
     def create(lvname)
       out=@system.run("crfs -v jfs2 -d %s -m %s -A yes" % [lvname,@name])
       if out!=nil
@@ -349,6 +371,15 @@ module AIXLVM
 
     def umount
       out=@system.run("umount %s" % [@name])
+      if out!=nil
+        return out
+      else
+        raise AIXLVM::LVMException.new("system error:%s" % @system.last_error)
+      end
+    end
+
+    def defragfs
+      out=@system.run("defragfs %s" % [@name])
       if out!=nil
         return out
       else

@@ -302,5 +302,64 @@ INFINITE RETRY:     no
     assert_equal('',@mock.residual())
   end
 
+  def test_15_fs_notexist_defrag_fail()
+    @mock.add_retrun("lsfs -c /opt/data",nil)
+    @filesystem.logical_volume=''
+    @filesystem.size=''
+    exception = assert_raise(AIXLVM::LVMException) {
+      @filesystem.check_to_defrag
+    }
+    assert_equal("Filesystem doesn't exist!", exception.message)
+    assert_equal('',@mock.residual())
+  end
+
+  def test_16_fs_badformat_defrag_fail()
+    @mock.add_retrun("lsfs -c /opt/data","#MountPoint:Device:Vfs:Nodename:Type:Size:Options:AutoMount:Acct
+/opt/data:lv22:jfs:::1000:rw:yes:no")
+    @filesystem.logical_volume=''
+    @filesystem.size=''
+    exception = assert_raise(AIXLVM::LVMException) {
+      @filesystem.check_to_defrag
+    }
+    assert_equal("Filesystem doesn't jfs2!", exception.message)
+    assert_equal('',@mock.residual())
+  end
+
+  def test_17_fs_readonly_defrag_fail()
+    @mock.add_retrun("lsfs -c /opt/data","#MountPoint:Device:Vfs:Nodename:Type:Size:Options:AutoMount:Acct
+  /opt/data:lv22:jfs2:::1000:r:yes:no")
+    @filesystem.logical_volume=''
+    @filesystem.size=''
+    exception = assert_raise(AIXLVM::LVMException) {
+      @filesystem.check_to_defrag
+    }
+    assert_equal("Filesystem is readonly!", exception.message)
+    assert_equal('',@mock.residual())
+  end
+
+  def test_18_fs_notmount_defrag_fail()
+    @mock.add_retrun("lsfs -c /opt/data","#MountPoint:Device:Vfs:Nodename:Type:Size:Options:AutoMount:Acct
+/opt/data:lv22:jfs2:::1000:rw:yes:no")
+    @mock.add_retrun("mount | grep /opt/data", nil)
+    @filesystem.logical_volume=''
+    @filesystem.size=''
+    exception = assert_raise(AIXLVM::LVMException) {
+      @filesystem.check_to_defrag
+    }
+    assert_equal("Filesystem doesn't mount!", exception.message)
+    assert_equal('',@mock.residual())
+  end
+
+  def test_19_fs_defrag()
+    @mock.add_retrun("lsfs -c /opt/data","#MountPoint:Device:Vfs:Nodename:Type:Size:Options:AutoMount:Acct
+/opt/data:lv22:jfs2:::1000:rw:yes:no")
+    @mock.add_retrun("mount | grep /opt/data", "         /dev/part2       /opt/data     jfs2   May 27 12:04 rw,log=/dev/loglv00")
+    @mock.add_retrun("defragfs /opt/data", "")
+    @filesystem.logical_volume=''
+    @filesystem.size=''
+    assert_equal(true,@filesystem.check_to_defrag)
+    assert_equal(["File system '/opt/data' defraged"],@filesystem.defragfs)
+  end
+
 end
 

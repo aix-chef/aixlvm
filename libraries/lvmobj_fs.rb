@@ -71,7 +71,7 @@ module AIXLVM
       end
       return ret
     end
-    
+
     def check_to_mount(is_mount)
       fs_obj=StObjFS.new(@system,@name)
       if ! fs_obj.exist?
@@ -81,7 +81,7 @@ module AIXLVM
         return !fs_obj.mounted?
       else
         return fs_obj.mounted?
-      end 
+      end
     end
 
     def mount
@@ -91,12 +91,37 @@ module AIXLVM
       ret.push("File system '%s' mounted" % [@name])
       return ret
     end
-    
+
     def umount
       ret = []
       fs_obj=StObjFS.new(@system,@name)
       fs_obj.umount
       ret.push("File system '%s' umounted" % [@name])
+      return ret
+    end
+
+    def check_to_defrag()
+      fs_obj=StObjFS.new(@system,@name)
+      if ! fs_obj.exist?
+        raise AIXLVM::LVMException.new("Filesystem doesn't exist!")
+      end
+      if fs_obj.get_format!='jfs2'
+        raise AIXLVM::LVMException.new("Filesystem doesn't jfs2!")
+      end
+      if fs_obj.readonly?
+        raise AIXLVM::LVMException.new("Filesystem is readonly!")
+      end
+      if !fs_obj.mounted?
+        raise AIXLVM::LVMException.new("Filesystem doesn't mount!")
+      end
+      return true
+    end
+
+    def defragfs
+      ret = []
+      fs_obj=StObjFS.new(@system,@name)
+      fs_obj.defragfs
+      ret.push("File system '%s' defraged" % [@name])
       return ret
     end
 

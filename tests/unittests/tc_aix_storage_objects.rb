@@ -57,6 +57,11 @@ class TestAIXStorage_VG < Test::Unit::TestCase
     system("extendvg -f datavg hdisk2 2>/dev/null")
   end
 
+  def teardown
+    system("varyoffvg datavg 2>/dev/null")
+    system("exportvg datavg 2>/dev/null")
+  end
+
   def test_01_exists
     @stobj = AIXLVM::StObjVG.new(AIXLVM::System.new(),"datavg")
     assert_equal(true, @stobj.exist?)
@@ -166,6 +171,11 @@ class TestAIXStorage_LV < Test::Unit::TestCase
     system("mklv -t jfs2 -y part1 datavg 20 2>/dev/null")
   end
 
+  def teardown
+    system("varyoffvg datavg 2>/dev/null")
+    system("exportvg datavg 2>/dev/null")
+  end
+
   def test_01_exists
     @stobj = AIXLVM::StObjLV.new(AIXLVM::System.new(),'hd1')
     assert_equal(true, @stobj.exist?)
@@ -237,6 +247,8 @@ end
 class TestAIXStorage_FS < Test::Unit::TestCase
   def setup
     print("\n")
+    system("umount /opt/data1 2>/dev/null")
+    system("umount /opt/data2 2>/dev/null")
     system("varyoffvg datavg 2>/dev/null")
     system("exportvg datavg 2>/dev/null")
     system("mkvg -y datavg -s 4 -f hdisk1 2>/dev/null")
@@ -244,6 +256,13 @@ class TestAIXStorage_FS < Test::Unit::TestCase
     system("mklv -t jfs2 -y part2 datavg 256 2>/dev/null")
     system("crfs -v jfs2 -d part1 -m /opt/data1 -A yes 2>/dev/null")
     system("chfs -a size=64M /opt/data1 2>/dev/null")
+  end
+
+  def teardown
+    system("umount /opt/data1 2>/dev/null")
+    system("umount /opt/data2 2>/dev/null")
+    system("varyoffvg datavg 2>/dev/null")
+    system("exportvg datavg 2>/dev/null")
   end
 
   def test_01_exists
@@ -295,6 +314,32 @@ class TestAIXStorage_FS < Test::Unit::TestCase
     assert_equal(true, @stobj.mounted?)
     @stobj.umount
     assert_equal(false, @stobj.mounted?)
+  end
+
+  def test_06_format
+    @stobj = AIXLVM::StObjFS.new(AIXLVM::System.new(),'/opt/data1')
+    assert_equal('jfs2', @stobj.get_format)
+    @stobj = AIXLVM::StObjFS.new(AIXLVM::System.new(),'/opt/data3')
+    assert_equal(nil, @stobj.get_format)
+  end
+
+  def test_07_readonly
+    @stobj = AIXLVM::StObjFS.new(AIXLVM::System.new(),'/opt/data1')
+    assert_equal(false, @stobj.readonly?)
+    @stobj = AIXLVM::StObjFS.new(AIXLVM::System.new(),'/opt/data3')
+    assert_equal(nil, @stobj.readonly?)
+  end
+
+  def test_08_defrag
+    @stobj = AIXLVM::StObjFS.new(AIXLVM::System.new(),'/opt/data1')
+    @stobj.mount
+    @stobj.defragfs()
+
+    @stobj = AIXLVM::StObjFS.new(AIXLVM::System.new(),'/opt/data3')
+    exception = assert_raise(AIXLVM::LVMException) {
+      @stobj.defragfs()
+    }
+    assert_equal('system error:/sbin/helpers/cdrfs/fstype: No such file or directory', exception.message[0,66])
   end
 
 end

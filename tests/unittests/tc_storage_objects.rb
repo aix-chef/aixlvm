@@ -549,4 +549,39 @@ class TestStorage_FS < Test::Unit::TestCase
     assert_equal(false, @stobj.mounted?)
   end
 
+  def test_06_format
+    @mock.add_retrun("lsfs -c /opt/data","#MountPoint:Device:Vfs:Nodename:Type:Size:Options:AutoMount:Acct
+/opt/data:part1:jfs2:::2031616:rw:yes:no")
+    @mock.add_retrun("lsfs -c /opt/data", nil)
+    assert_equal('jfs2', @stobj.get_format)
+    @stobj = AIXLVM::StObjFS.new(@mock,'/opt/data')
+    assert_equal(nil, @stobj.get_format)
+    assert_equal('',@mock.residual())
+  end
+
+  def test_07_readonly
+    @mock.add_retrun("lsfs -c /opt/data","#MountPoint:Device:Vfs:Nodename:Type:Size:Options:AutoMount:Acct
+/opt/data:part1:jfs2:::2031616:rw:yes:no")
+    @mock.add_retrun("lsfs -c /opt/data","#MountPoint:Device:Vfs:Nodename:Type:Size:Options:AutoMount:Acct
+/opt/data:part1:jfs2:::2031616:r:yes:no")
+    @mock.add_retrun("lsfs -c /opt/data", nil)
+    assert_equal(false, @stobj.readonly?)
+    @stobj = AIXLVM::StObjFS.new(@mock,'/opt/data')
+    assert_equal(true, @stobj.readonly?)
+    @stobj = AIXLVM::StObjFS.new(@mock,'/opt/data')
+    assert_equal(nil, @stobj.readonly?)
+    assert_equal('',@mock.residual())
+  end
+
+  def test_08_defrag
+    @mock.add_retrun("defragfs /opt/data", '')
+    @mock.add_retrun("defragfs /opt/data", nil)
+    @stobj.defragfs()
+    exception = assert_raise(AIXLVM::LVMException) {
+      @stobj.defragfs()
+    }
+    assert_equal('system error:defragfs /opt/data', exception.message)
+    assert_equal('',@mock.residual())
+  end
+
 end

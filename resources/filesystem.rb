@@ -5,7 +5,7 @@
 #
 # Copyright:: 2016
 
-actions :create, :mount, :umount
+actions :create, :mount, :umount, :defragfs
 default_action :create
 attr_accessor :exists
 

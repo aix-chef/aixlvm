@@ -51,3 +51,15 @@ action :umount do
     Chef::Log.fatal(e.message)
   end
 end
+
+action :defragfs do
+  begin
+    if @filesystem.check_to_defrag
+      converge_by(@filesystem.defragfs().join(" | ")) do
+
+      end
+    end
+  rescue AIXLVM::LVMException => e
+    Chef::Log.fatal(e.message)
+  end
+end

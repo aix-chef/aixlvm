@@ -72,3 +72,7 @@ end
 aixlvm_filesystem '/lvm/folder2' do
     action :mount
 end
+
+aixlvm_filesystem '/lvm/folder2' do
+    action :defragfs
+end
